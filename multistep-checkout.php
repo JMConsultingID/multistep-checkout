@@ -8,134 +8,122 @@
  */
 
 if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly.
+    exit;
 }
 
 class Multistep_Checkout {
 
     public function __construct() {
-        // Hook into WooCommerce checkout fields to modify them
+        // Remove default payment fields and methods
+        add_action('init', [$this, 'remove_payment_methods']);
+        
+        // Modify checkout fields
         add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
-
-        // Remove payment options from checkout page
+        
+        // Bypass payment requirements
         add_filter('woocommerce_cart_needs_payment', '__return_false');
-
-        // Allow order creation without payment methods
-        add_filter('woocommerce_order_needs_payment', '__return_false');
-
-        // Automatically set a dummy payment method for bypassing payment validation
-        add_action('woocommerce_checkout_create_order', [$this, 'set_dummy_payment_method']);
-
-        // Bypass payment validation during checkout
-        add_filter('woocommerce_payment_complete_order_status', [$this, 'bypass_payment_status'], 10, 3);
-
-        // Hook into the checkout process to modify order creation
-        add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
-
-        // Ensure form validation works as intended
-        add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
-
-        // Modify order-pay page (optional customization)
-        add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
-
-        // Ensure payment method is valid before processing
-        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_pending_orders'], 10, 2);
+        add_filter('woocommerce_order_needs_payment', '__return_true');
+        
+        // Handle order creation process
+        add_action('woocommerce_checkout_process', [$this, 'modify_checkout_process']);
+        add_action('woocommerce_checkout_create_order', [$this, 'set_order_payment_method']);
+        add_action('woocommerce_checkout_order_processed', [$this, 'handle_order_redirect'], 10, 3);
+        
+        // Allow pending payment orders
+        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'add_pending_to_valid_order_statuses']);
+        
+        // Disable payment validation
+        add_filter('woocommerce_checkout_update_order_review_expired', '__return_false');
     }
 
-    /**
-     * Customize WooCommerce checkout fields
-     *
-     * @param array $fields
-     * @return array
-     */
-    public function customize_checkout_fields($fields) {
-        // Remove shipping fields
-        unset($fields['shipping']);
+    public function remove_payment_methods() {
+        remove_action('woocommerce_checkout_order_review', 'woocommerce_checkout_payment', 20);
+        remove_action('woocommerce_checkout_process', 'woocommerce_checkout_process_payment');
+    }
 
-        // Optionally remove some billing fields
+    public function customize_checkout_fields($fields) {
+        // Remove payment fields
+        unset($fields['payment']);
+        
+        // Customize billing fields as needed
         unset($fields['billing']['billing_company']);
         unset($fields['billing']['billing_address_2']);
-
+        
         return $fields;
     }
 
-    /**
-     * Automatically set a dummy payment method to bypass validation
-     *
-     * @param WC_Order $order
-     */
-    public function set_dummy_payment_method($order) {
-        $payment_method = 'bacs'; // Use a valid payment method ID as a placeholder
-        $order->set_payment_method($payment_method);
-        $order->add_order_note(__('Payment method set to BACS as placeholder.', 'multistep-checkout'));
-    }
-
-    /**
-     * Redirect to the order pay page after creating the order
-     *
-     * @param int $order_id
-     */
-    public function redirect_to_order_pay($order_id) {
-        $order = wc_get_order($order_id);
-
-        // Set order status to pending payment
-        if ($order->get_status() !== 'pending') {
-            $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
-        }
-
-        // Redirect to the order pay page
-        wp_redirect($order->get_checkout_payment_url());
-        exit;
-    }
-
-    /**
-     * Validate checkout fields
-     */
-    public function validate_checkout_fields() {
-        // Example validation: Ensure first name is filled in
+    public function modify_checkout_process() {
+        // Basic validation
         if (empty($_POST['billing_first_name'])) {
-            wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
+            wc_add_notice(__('First name is required.', 'multistep-checkout'), 'error');
+        }
+        if (empty($_POST['billing_last_name'])) {
+            wc_add_notice(__('Last name is required.', 'multistep-checkout'), 'error');
+        }
+        if (empty($_POST['billing_email'])) {
+            wc_add_notice(__('Email address is required.', 'multistep-checkout'), 'error');
         }
     }
 
-    /**
-     * Allow payment for pending orders
-     *
-     * @param array $statuses
-     * @param WC_Order $order
-     * @return array
-     */
-    public function allow_payment_for_pending_orders($statuses, $order) {
-        if ($order->get_status() === 'pending') {
+    public function set_order_payment_method($order) {
+        // Set a temporary payment method
+        $order->set_payment_method('');
+        $order->set_payment_method_title('');
+        $order->set_status('pending', 'Order created via multi-step checkout.');
+    }
+
+    public function handle_order_redirect($order_id, $posted_data, $order) {
+        if (!$order_id) {
+            return;
+        }
+
+        // Ensure we have a valid order object
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            return;
+        }
+
+        // Clear session and cart
+        WC()->session->set('order_awaiting_payment', $order_id);
+        WC()->cart->empty_cart();
+
+        // Get the pay page URL
+        $pay_url = $order->get_checkout_payment_url(true);
+
+        // Redirect to payment page
+        if (!empty($pay_url)) {
+            wp_redirect($pay_url);
+            exit;
+        }
+    }
+
+    public function add_pending_to_valid_order_statuses($statuses) {
+        if (!in_array('pending', $statuses)) {
             $statuses[] = 'pending';
         }
         return $statuses;
     }
-
-    /**
-     * Bypass payment status validation
-     *
-     * @param string $status
-     * @param int $order_id
-     * @param WC_Order $order
-     * @return string
-     */
-    public function bypass_payment_status($status, $order_id, $order) {
-        if ($order->get_payment_method() === 'bacs') {
-            return 'pending';
-        }
-        return $status;
-    }
-
-    /**
-     * Customize the order-pay page (optional)
-     *
-     * @param int $order_id
-     */
-    public function customize_order_pay_page($order_id) {
-        echo '<p>' . __('Please select a payment method to complete your order.', 'multistep-checkout') . '</p>';
-    }
 }
 
 // Initialize the plugin
-new Multistep_Checkout();
+function init_multistep_checkout() {
+    if (class_exists('WooCommerce')) {
+        new Multistep_Checkout();
+    }
+}
+
+add_action('plugins_loaded', 'init_multistep_checkout');
+
+// Add custom CSS for multi-step display (optional)
+add_action('wp_head', function() {
+    if (is_checkout()) {
+        ?>
+        <style>
+            .woocommerce-checkout-payment {
+                display: none !important;
+            }
+            /* Add your multi-step styling here */
+        </style>
+        <?php
+    }
+});
