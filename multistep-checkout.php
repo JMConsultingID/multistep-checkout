@@ -21,7 +21,10 @@ class Multistep_Checkout {
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
         // Allow order creation without payment methods
-        add_filter('woocommerce_order_needs_payment', [$this, 'allow_order_without_payment'], 10, 2);
+        add_filter('woocommerce_order_needs_payment', '__return_false');
+
+        // Automatically set a dummy payment method for bypassing payment validation
+        add_action('woocommerce_checkout_create_order', [$this, 'set_dummy_payment_method']);
 
         // Hook into the checkout process to modify order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
@@ -51,18 +54,12 @@ class Multistep_Checkout {
     }
 
     /**
-     * Allow order creation without requiring a payment method
+     * Automatically set a dummy payment method to bypass validation
      *
-     * @param bool $needs_payment
      * @param WC_Order $order
-     * @return bool
      */
-    public function allow_order_without_payment($needs_payment, $order) {
-        // Allow orders to be created without payment during the checkout process
-        if (is_checkout()) {
-            return false;
-        }
-        return $needs_payment;
+    public function set_dummy_payment_method($order) {
+        $order->set_payment_method('bacs'); // Use a valid payment method ID as a placeholder
     }
 
     /**
