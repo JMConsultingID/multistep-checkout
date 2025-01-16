@@ -23,6 +23,9 @@ class Multistep_Checkout {
         // Allow order creation without payment methods
         add_filter('woocommerce_order_needs_payment', '__return_false');
 
+        // Bypass WooCommerce payment validation on checkout
+        add_action('woocommerce_checkout_process', [$this, 'bypass_payment_validation']);
+
         // Set dummy payment method after order is processed
         add_action('woocommerce_checkout_order_processed', [$this, 'set_dummy_payment_method']);
 
@@ -54,6 +57,15 @@ class Multistep_Checkout {
         unset($fields['billing']['billing_address_2']);
 
         return $fields;
+    }
+
+    /**
+     * Bypass WooCommerce payment validation on checkout
+     */
+    public function bypass_payment_validation() {
+        // Remove default payment method validation
+        remove_filter('woocommerce_checkout_process', 'woocommerce_checkout_payment_method_missing_message', 10);
+        error_log('Bypassed payment validation on checkout.');
     }
 
     /**
