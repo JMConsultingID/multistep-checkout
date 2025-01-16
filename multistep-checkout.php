@@ -17,11 +17,12 @@ class Multistep_Checkout {
         // Hook into WooCommerce checkout fields to modify them
         add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
 
-        // Remove payment options from checkout page
-        add_filter('woocommerce_cart_needs_payment', '__return_false');
+        // Remove payment options from checkout page (priority 5 for early execution)
+        add_filter('woocommerce_cart_needs_payment', '__return_false', 5);
 
-        // Allow order creation without payment methods
-        add_filter('woocommerce_order_needs_payment', '__return_false');
+        // Allow order creation without payment methods (priority 5 for early execution)
+        add_filter('woocommerce_order_needs_payment', '__return_false', 5);
+
 
         // Automatically set COD (Cash on Delivery) payment method for bypassing payment validation
         add_action('woocommerce_checkout_create_order', [$this, 'set_cod_payment_method']);
