@@ -26,14 +26,17 @@ class Multistep_Checkout {
         // Bypass WooCommerce payment validation on checkout
         add_action('woocommerce_checkout_process', [$this, 'bypass_payment_validation']);
 
-        // Set dummy payment method after order is processed
-        add_action('woocommerce_checkout_order_processed', [$this, 'set_dummy_payment_method']);
+        // Set default payment method during order creation
+        add_action('woocommerce_checkout_create_order', [$this, 'set_default_payment_method'], 10, 2);
 
         // Redirect to the order pay page after order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay'], 20);
 
         // Ensure form validation works as intended
         add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
+
+        // Add hidden payment method field to checkout form
+        add_action('woocommerce_review_order_before_submit', [$this, 'add_hidden_payment_method_field']);
 
         // Modify order-pay page (optional customization)
         add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
@@ -69,24 +72,18 @@ class Multistep_Checkout {
     }
 
     /**
-     * Automatically set a dummy payment method to bypass validation
+     * Set default payment method during order creation
      *
-     * @param int $order_id
+     * @param WC_Order $order
+     * @param array $data
      */
-    public function set_dummy_payment_method($order_id) {
-        $order = wc_get_order($order_id);
-
-        if (!$order || !$order->get_id()) {
-            error_log('Failed to set payment method. Invalid Order object or Order ID: ' . ($order ? $order->get_id() : 'NULL'));
-            return;
-        }
-
+    public function set_default_payment_method($order, $data) {
         $payment_method = 'bacs'; // Use a valid payment method ID as a placeholder
         $order->set_payment_method($payment_method);
-        $order->add_order_note(__('Payment method set to BACS as placeholder.', 'multistep-checkout'));
+        $order->add_order_note(__('Default payment method set to BACS.', 'multistep-checkout'));
 
         // Log the action
-        error_log('Dummy payment method set for Order ID: ' . $order->get_id());
+        error_log('Default payment method set to BACS for Order ID: ' . $order->get_id());
     }
 
     /**
@@ -106,7 +103,7 @@ class Multistep_Checkout {
         }
 
         // Set order status to pending payment
-        if ($order->get_status() !== 'pending') {
+        if ($order->get_status() !== 'pending-payment') {
             $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
         }
 
@@ -123,6 +120,13 @@ class Multistep_Checkout {
         if (empty($_POST['billing_first_name'])) {
             wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
         }
+    }
+
+    /**
+     * Add hidden payment method field to checkout form
+     */
+    public function add_hidden_payment_method_field() {
+        echo '<input type="hidden" name="payment_method" value="bacs">';
     }
 
     /**
