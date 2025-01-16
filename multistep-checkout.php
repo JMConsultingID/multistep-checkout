@@ -96,7 +96,7 @@ class Multistep_Checkout {
             return;
         }
 
-        $payment_method = 'bacs'; // Use a valid payment method ID as a placeholder
+        $payment_method = ''; // Use a valid payment method ID as a placeholder
         $order->set_payment_method($payment_method);
         $order->add_order_note(__('Default payment method set to BACS.', 'multistep-checkout'));
 
