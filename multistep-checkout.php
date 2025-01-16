@@ -23,11 +23,20 @@ class Multistep_Checkout {
         // Allow order creation without payment methods
         add_filter('woocommerce_order_needs_payment', '__return_false');
 
-        // Redirect to order-pay after checkout
-        add_action('woocommerce_thankyou', [$this, 'redirect_to_order_pay'], 1);
+        // Automatically set COD (Cash on Delivery) payment method for bypassing payment validation
+        add_action('woocommerce_checkout_create_order', [$this, 'set_cod_payment_method']);
+
+        // Hook into the checkout process to modify order creation
+        add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
 
         // Ensure form validation works as intended
         add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
+
+        // Modify order-pay page (optional customization)
+        add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
+
+        // Ensure payment method is valid before processing
+        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_pending_orders'], 10, 2);
     }
 
     /**
@@ -48,26 +57,31 @@ class Multistep_Checkout {
     }
 
     /**
-     * Redirect to the order pay page after checkout
+     * Automatically set COD payment method to bypass validation
+     *
+     * @param WC_Order $order
+     */
+    public function set_cod_payment_method($order) {
+        $payment_method = 'cod'; // Use COD as the default payment method
+        $order->set_payment_method($payment_method);
+        $order->add_order_note(__('Payment method set to COD as placeholder.', 'multistep-checkout'));
+    }
+
+    /**
+     * Redirect to the order pay page after creating the order
      *
      * @param int $order_id
      */
     public function redirect_to_order_pay($order_id) {
-        if (!$order_id) return;
-
-        // Get the order
         $order = wc_get_order($order_id);
 
-        // Set order status to 'Pending Payment'
+        // Set order status to pending payment
         if ($order->get_status() !== 'pending') {
-            $order->update_status('pending', __('Awaiting payment', 'multistep-checkout'));
+            $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
         }
 
-        // Generate the order-pay URL
-        $order_pay_url = $order->get_checkout_payment_url();
-
-        // Redirect to the order-pay page
-        wp_redirect($order_pay_url);
+        // Redirect to the order pay page
+        wp_redirect($order->get_checkout_payment_url());
         exit;
     }
 
@@ -79,6 +93,29 @@ class Multistep_Checkout {
         if (empty($_POST['billing_first_name'])) {
             wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
         }
+    }
+
+    /**
+     * Allow payment for pending orders
+     *
+     * @param array $statuses
+     * @param WC_Order $order
+     * @return array
+     */
+    public function allow_payment_for_pending_orders($statuses, $order) {
+        if ($order->get_status() === 'pending') {
+            $statuses[] = 'pending';
+        }
+        return $statuses;
+    }
+
+    /**
+     * Customize the order-pay page (optional)
+     *
+     * @param int $order_id
+     */
+    public function customize_order_pay_page($order_id) {
+        echo '<p>' . __('Please select a payment method to complete your order.', 'multistep-checkout') . '</p>';
     }
 }
 
