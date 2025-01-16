@@ -20,6 +20,9 @@ class Multistep_Checkout {
         // Remove payment options from checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
+        // Allow order creation without payment methods
+        add_filter('woocommerce_order_needs_payment', '__return_false');
+
         // Set dummy payment method after order is processed
         add_action('woocommerce_checkout_order_processed', [$this, 'set_dummy_payment_method']);
 
