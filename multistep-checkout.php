@@ -222,3 +222,20 @@ class Multistep_Checkout {
 
 // Initialize the plugin
 new Multistep_Checkout();
+
+
+add_filter('woocommerce_locate_template', function ($template, $template_name, $template_path) {
+    // Check if the requested template is form-pay.php
+    if ($template_name === 'checkout/form-pay.php') {
+        // Define the path to the plugin's custom template
+        $plugin_template = YPF_CHECKOUT_DIR . 'templates/woocommerce/checkout/form-pay.php';
+        
+        // Return the plugin template if it exists
+        if (file_exists($plugin_template)) {
+            return $plugin_template;
+        }
+    }
+
+    // Return the original template if no override
+    return $template;
+}, 10, 3);
