@@ -23,11 +23,11 @@ class Multistep_Checkout {
         // Allow order creation without payment methods
         add_filter('woocommerce_order_needs_payment', '__return_false');
 
-        // Automatically set a dummy payment method for bypassing payment validation
-        add_action('woocommerce_checkout_create_order', [$this, 'set_dummy_payment_method']);
+        // Set dummy payment method after order is processed
+        add_action('woocommerce_checkout_order_processed', [$this, 'set_dummy_payment_method']);
 
-        // Hook into the checkout process to modify order creation
-        add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
+        // Redirect to the order pay page after order creation
+        add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay'], 20);
 
         // Ensure form validation works as intended
         add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
@@ -59,9 +59,11 @@ class Multistep_Checkout {
     /**
      * Automatically set a dummy payment method to bypass validation
      *
-     * @param WC_Order $order
+     * @param int $order_id
      */
-    public function set_dummy_payment_method($order) {
+    public function set_dummy_payment_method($order_id) {
+        $order = wc_get_order($order_id);
+
         if (!$order || !$order->get_id()) {
             error_log('Failed to set payment method. Invalid Order object or Order ID: ' . ($order ? $order->get_id() : 'NULL'));
             return;
@@ -74,7 +76,6 @@ class Multistep_Checkout {
         // Log the action
         error_log('Dummy payment method set for Order ID: ' . $order->get_id());
     }
-
 
     /**
      * Redirect to the order pay page after creating the order
