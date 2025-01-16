@@ -18,22 +18,22 @@ class Multistep_Checkout {
         add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
 
         // Remove payment options from checkout page
-        add_filter('woocommerce_cart_needs_payment', '__return_false', 10, 2);
+        add_filter('woocommerce_cart_needs_payment', '__return_false');
 
         // Allow order creation without payment methods
-        add_filter('woocommerce_order_needs_payment', [$this, 'set_order_payment_method'], 10, 2);
+        add_filter('woocommerce_order_needs_payment', '__return_false');
 
-        // Automatically set a temporary payment method
-        add_action('woocommerce_checkout_create_order', [$this, 'set_order_payment_method'], 10, 2);
+        // Automatically set a dummy payment method for bypassing payment validation
+        add_action('woocommerce_checkout_create_order', [$this, 'set_dummy_payment_method']);
 
-        // Redirect to payment page after order creation
-        add_action('woocommerce_checkout_order_processed', [$this, 'handle_order_redirect'], 10, 2);
+        // Hook into the checkout process to modify order creation
+        add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
 
         // Ensure form validation works as intended
         add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
 
-        // Modify order-pay page (optional customization)
-        add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
+        // Force a valid payment method for pending orders
+        add_action('woocommerce_before_checkout_process', [$this, 'force_valid_payment_method']);
     }
 
     /**
@@ -54,49 +54,28 @@ class Multistep_Checkout {
     }
 
     /**
-     * Set a temporary payment method for the order
+     * Automatically set a dummy payment method to bypass validation
      *
      * @param WC_Order $order
      */
-    public function set_order_payment_method($order) {
-        $payment_method = 'bacs'; // Set dummy payment method (Bank Transfer in this case)
-        $order->set_payment_method($payment_method);
-        $order->set_payment_method_title(__('Bank Transfer (Dummy)', 'multistep-checkout'));
-        $order->add_order_note(__('Temporary payment method applied for multi-step checkout.', 'multistep-checkout'));
+    public function set_dummy_payment_method($order) {
+        $order->set_payment_method('bacs'); // Use a valid payment method ID as a placeholder
     }
 
     /**
-     * Redirect to the payment page after order creation
+     * Redirect to the order pay page after creating the order
      *
      * @param int $order_id
-     * @param array $posted_data
      */
-    public function handle_order_redirect($order_id, $posted_data) {
-        if (!$order_id) {
-            return;
-        }
-
-        // Ensure we have a valid order object
+    public function redirect_to_order_pay($order_id) {
         $order = wc_get_order($order_id);
-        if (!$order) {
-            return;
-        }
 
         // Set order status to pending payment
-        if ($order->get_status() !== 'pending') {
-            $order->update_status('pending-payment', __('Order created and waiting for payment.', 'multistep-checkout'));
-        }
+        $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
 
-        // Clear session and cart
-        WC()->session->set('order_awaiting_payment', $order_id);
-        WC()->cart->empty_cart();
-
-        // Redirect to payment page
-        $pay_url = $order->get_checkout_payment_url(true);
-        if (!empty($pay_url)) {
-            wp_safe_redirect($pay_url);
-            exit;
-        }
+        // Redirect to the order pay page
+        wp_redirect($order->get_checkout_payment_url());
+        exit;
     }
 
     /**
@@ -110,12 +89,12 @@ class Multistep_Checkout {
     }
 
     /**
-     * Customize the order-pay page (optional)
-     *
-     * @param int $order_id
+     * Force a valid payment method to avoid validation errors
      */
-    public function customize_order_pay_page($order_id) {
-        echo '<p>' . __('Please select a payment method to complete your order.', 'multistep-checkout') . '</p>';
+    public function force_valid_payment_method() {
+        if (empty($_POST['payment_method'])) {
+            $_POST['payment_method'] = 'bacs'; // Set a default payment method
+        }
     }
 }
 
