@@ -183,7 +183,7 @@ class Multistep_Checkout {
      * Add hidden payment method field to checkout form
      */
     public function add_hidden_payment_method_field() {
-        echo '<input type="hidden" name="payment_method" value="bacs">';
+        echo '<input type="hidden">';
     }
 
     /**
