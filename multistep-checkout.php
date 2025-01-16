@@ -34,6 +34,9 @@ class Multistep_Checkout {
 
         // Modify order-pay page (optional customization)
         add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
+
+        // Ensure payment method is valid before processing
+        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_pending_orders'], 10, 2);
     }
 
     /**
@@ -86,6 +89,20 @@ class Multistep_Checkout {
         if (empty($_POST['billing_first_name'])) {
             wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
         }
+    }
+
+    /**
+     * Allow payment for pending orders
+     *
+     * @param array $statuses
+     * @param WC_Order $order
+     * @return array
+     */
+    public function allow_payment_for_pending_orders($statuses, $order) {
+        if ($order->get_status() === 'pending') {
+            $statuses[] = 'pending';
+        }
+        return $statuses;
     }
 
     /**
