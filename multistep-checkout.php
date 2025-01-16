@@ -17,12 +17,14 @@ class Multistep_Checkout {
         // Hook into WooCommerce checkout fields to modify them
         add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
 
-        // Remove payment options from checkout page (priority 5 for early execution)
-        add_filter('woocommerce_cart_needs_payment', '__return_false', 5);
+        // Remove payment options from checkout page
+        add_filter('woocommerce_cart_needs_payment', '__return_false');
 
-        // Allow order creation without payment methods (priority 5 for early execution)
-        add_filter('woocommerce_order_needs_payment', '__return_false', 5);
+        // Allow order creation without payment methods
+        add_filter('woocommerce_order_needs_payment', '__return_false');
 
+        // Override payment validation during checkout
+        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_all_statuses'], 10, 2);
 
         // Automatically set COD (Cash on Delivery) payment method for bypassing payment validation
         add_action('woocommerce_checkout_create_order', [$this, 'set_cod_payment_method']);
@@ -35,9 +37,6 @@ class Multistep_Checkout {
 
         // Modify order-pay page (optional customization)
         add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
-
-        // Ensure payment method is valid before processing
-        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_pending_orders'], 10, 2);
     }
 
     /**
@@ -55,6 +54,18 @@ class Multistep_Checkout {
         unset($fields['billing']['billing_address_2']);
 
         return $fields;
+    }
+
+    /**
+     * Allow payment for all order statuses
+     *
+     * @param array $statuses
+     * @param WC_Order $order
+     * @return array
+     */
+    public function allow_payment_for_all_statuses($statuses, $order) {
+        $statuses[] = 'pending';
+        return $statuses;
     }
 
     /**
@@ -94,20 +105,6 @@ class Multistep_Checkout {
         if (empty($_POST['billing_first_name'])) {
             wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
         }
-    }
-
-    /**
-     * Allow payment for pending orders
-     *
-     * @param array $statuses
-     * @param WC_Order $order
-     * @return array
-     */
-    public function allow_payment_for_pending_orders($statuses, $order) {
-        if ($order->get_status() === 'pending') {
-            $statuses[] = 'pending';
-        }
-        return $statuses;
     }
 
     /**
