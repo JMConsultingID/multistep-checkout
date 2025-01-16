@@ -76,7 +76,14 @@ class Multistep_Checkout {
     public function set_cod_payment_method($order) {
         $payment_method = 'cod'; // Use COD as the default payment method
         $order->set_payment_method($payment_method);
-        $order->add_order_note(__('Payment method set to COD as placeholder.', 'multistep-checkout'));
+
+        // Add order note and log for debugging
+        $note = __('Payment method set to COD as placeholder.', 'multistep-checkout');
+        $order->add_order_note($note);
+
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('[Multistep Checkout] Order ID: ' . $order->get_id() . ' - ' . $note);
+        }
     }
 
     /**
