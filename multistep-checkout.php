@@ -80,18 +80,6 @@ class Multistep_Checkout {
      *
      * @param int $order_id
      */
-    public function redirect_to_order_pay($order_id) {
-        $order = wc_get_order($order_id);
-
-        // Set order status to pending payment
-        if ($order->get_status() !== 'pending') {
-            $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
-        }
-
-        // Redirect to the order pay page
-        wp_redirect($order->get_checkout_payment_url());
-        exit;
-    }
 
     public function redirect_to_order_pay($order_id) {
         $order = wc_get_order($order_id);
