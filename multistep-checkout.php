@@ -29,8 +29,7 @@ class Multistep_Checkout {
         // Set default payment method after order is created
         add_action('woocommerce_checkout_order_created', [$this, 'set_default_payment_method']);
 
-
-        add_action('woocommerce_thank_you', [$this, 'redirect_to_order_pay']);
+        add_action('woocommerce_thank_you', [$this, 'force_redirect_to_order_pay']);
 
         // Ensure form validation works as intended
         add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
