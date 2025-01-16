@@ -14,23 +14,41 @@ if (!defined('ABSPATH')) {
 class Multistep_Checkout {
 
     public function __construct() {
-        // Hook into WooCommerce checkout process to bypass payment validation
-        add_action('woocommerce_checkout_process', [$this, 'bypass_payment_validation']);
+        // Hook into WooCommerce checkout fields to modify them
+        add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
 
-        // Redirect to the order-pay page after order creation
-        add_action('woocommerce_thankyou', [$this, 'redirect_to_order_pay'], 1);
-    }
+        // Remove payment options from checkout page
+        add_filter('woocommerce_cart_needs_payment', '__return_false');
 
-    /**
-     * Bypass payment validation during checkout process
-     */
-    public function bypass_payment_validation() {
-        // Disable default payment requirement (optional)
+        // Allow order creation without payment methods
         add_filter('woocommerce_order_needs_payment', '__return_false');
+
+        // Redirect to order-pay after checkout
+        add_action('woocommerce_thankyou', [$this, 'redirect_to_order_pay'], 1);
+
+        // Ensure form validation works as intended
+        add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
     }
 
     /**
-     * Redirect to the order-pay page after creating the order
+     * Customize WooCommerce checkout fields
+     *
+     * @param array $fields
+     * @return array
+     */
+    public function customize_checkout_fields($fields) {
+        // Remove shipping fields
+        unset($fields['shipping']);
+
+        // Optionally remove some billing fields
+        unset($fields['billing']['billing_company']);
+        unset($fields['billing']['billing_address_2']);
+
+        return $fields;
+    }
+
+    /**
+     * Redirect to the order pay page after checkout
      *
      * @param int $order_id
      */
@@ -51,6 +69,16 @@ class Multistep_Checkout {
         // Redirect to the order-pay page
         wp_redirect($order_pay_url);
         exit;
+    }
+
+    /**
+     * Validate checkout fields
+     */
+    public function validate_checkout_fields() {
+        // Example validation: Ensure first name is filled in
+        if (empty($_POST['billing_first_name'])) {
+            wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
+        }
     }
 }
 
