@@ -29,6 +29,9 @@ class Multistep_Checkout {
         // Set default payment method after order is created
         add_action('woocommerce_checkout_order_created', [$this, 'set_default_payment_method']);
 
+        // Force redirect to the order pay page
+        add_action('woocommerce_checkout_process', [$this, 'force_redirect_to_order_pay']);
+
         // Redirect to the order pay page after order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay'], 20);
 
@@ -88,6 +91,22 @@ class Multistep_Checkout {
 
         // Log the action
         error_log('Default payment method set to BACS for Order ID: ' . $order->get_id());
+    }
+
+    /**
+     * Force redirect to the order pay page
+     */
+    public function force_redirect_to_order_pay() {
+        if (!wc_notice_count('error')) {
+            $order_id = WC()->session->get('order_awaiting_payment');
+            if ($order_id) {
+                $order = wc_get_order($order_id);
+                if ($order && $order->get_status() === 'pending-payment') {
+                    wp_redirect($order->get_checkout_payment_url());
+                    exit;
+                }
+            }
+        }
     }
 
     /**
