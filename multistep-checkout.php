@@ -23,11 +23,8 @@ class Multistep_Checkout {
         // Allow order creation without payment methods
         add_filter('woocommerce_order_needs_payment', '__return_false');
 
-        // Override payment validation during checkout
-        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_all_statuses'], 10, 2);
-
-        // Automatically set COD (Cash on Delivery) payment method for bypassing payment validation
-        add_action('woocommerce_checkout_create_order', [$this, 'set_cod_payment_method']);
+        // Automatically set a dummy payment method for bypassing payment validation
+        add_action('woocommerce_checkout_create_order', [$this, 'set_dummy_payment_method']);
 
         // Hook into the checkout process to modify order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
@@ -37,6 +34,9 @@ class Multistep_Checkout {
 
         // Modify order-pay page (optional customization)
         add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
+
+        // Ensure payment method is valid before processing
+        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_pending_orders'], 10, 2);
     }
 
     /**
@@ -57,42 +57,18 @@ class Multistep_Checkout {
     }
 
     /**
-     * Allow payment for all order statuses
-     *
-     * @param array $statuses
-     * @param WC_Order $order
-     * @return array
-     */
-    public function allow_payment_for_all_statuses($statuses, $order) {
-        $statuses[] = 'pending';
-        return $statuses;
-    }
-
-    /**
-     * Automatically set COD payment method to bypass validation
+     * Automatically set a dummy payment method to bypass validation
      *
      * @param WC_Order $order
      */
-    public function set_cod_payment_method($order) {
-        if (!$order || !$order->get_id()) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[Multistep Checkout] Failed to set payment method: Invalid Order.');
-            }
-            return;
-        }
-
-        $payment_method = 'cod'; // Use COD as the default payment method
+    public function set_dummy_payment_method($order) {
+        $payment_method = 'bacs'; // Use a valid payment method ID as a placeholder
         $order->set_payment_method($payment_method);
+        $order->add_order_note(__('Payment method set to BACS as placeholder.', 'multistep-checkout'));
 
-        // Add order note and log for debugging
-        $note = __('Payment method set to COD as placeholder.', 'multistep-checkout');
-        $order->add_order_note($note);
-
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('[Multistep Checkout] Order ID: ' . $order->get_id() . ' - ' . $note);
-        }
+        // Log the action
+        error_log('Dummy payment method set for Order ID: ' . $order->get_id());
     }
-
 
     /**
      * Redirect to the order pay page after creating the order
@@ -100,19 +76,13 @@ class Multistep_Checkout {
      * @param int $order_id
      */
     public function redirect_to_order_pay($order_id) {
-        if (!$order_id) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[Multistep Checkout] Redirect failed: Invalid Order ID.');
-            }
-            return;
-        }
+        // Log the order ID for debugging
+        error_log('Redirecting to order-pay. Order ID: ' . $order_id);
 
         $order = wc_get_order($order_id);
 
         if (!$order) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('[Multistep Checkout] Redirect failed: Order not found for ID ' . $order_id);
-            }
+            error_log('Order not found for Order ID: ' . $order_id);
             return;
         }
 
@@ -126,7 +96,6 @@ class Multistep_Checkout {
         exit;
     }
 
-
     /**
      * Validate checkout fields
      */
@@ -135,6 +104,24 @@ class Multistep_Checkout {
         if (empty($_POST['billing_first_name'])) {
             wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
         }
+    }
+
+    /**
+     * Allow payment for pending orders
+     *
+     * @param array $statuses
+     * @param WC_Order $order
+     * @return array
+     */
+    public function allow_payment_for_pending_orders($statuses, $order) {
+        if ($order->get_status() === 'pending') {
+            $statuses[] = 'pending';
+        }
+
+        // Log the action
+        error_log('Allowing payment for Order ID: ' . $order->get_id() . ' with status: ' . $order->get_status());
+
+        return $statuses;
     }
 
     /**
