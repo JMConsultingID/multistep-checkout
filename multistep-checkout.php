@@ -17,15 +17,23 @@ class Multistep_Checkout {
         // Hook into WooCommerce checkout fields to modify them
         add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
 
-        // Remove payment fields
-        add_action('woocommerce_checkout_fields', [$this, 'remove_payment_fields']);
+        // Remove payment options from checkout page
+        add_filter('woocommerce_cart_needs_payment', '__return_false');
 
-        // Hook into the checkout process to modify order creation
+        // Allow order creation without payment methods
+        add_filter('woocommerce_order_needs_payment', '__return_false');
+
+        // Automatically set a temporary payment method
         add_action('woocommerce_checkout_create_order', [$this, 'set_order_payment_method']);
+
+        // Redirect to payment page after order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'handle_order_redirect'], 10, 3);
 
         // Ensure form validation works as intended
         add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
+
+        // Modify order-pay page (optional customization)
+        add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
     }
 
     /**
@@ -46,27 +54,18 @@ class Multistep_Checkout {
     }
 
     /**
-     * Remove payment fields from checkout
-     *
-     * @param array $fields
-     */
-    public function remove_payment_fields($fields) {
-        unset($fields['payment']);
-    }
-
-    /**
      * Set a temporary payment method for the order
      *
      * @param WC_Order $order
      */
     public function set_order_payment_method($order) {
-        $order->set_payment_method('');
-        $order->set_payment_method_title('');
-        $order->set_status('pending', 'Order created via multi-step checkout.');
+        $order->set_payment_method(''); // Set no specific payment method
+        $order->set_payment_method_title(''); // Set no specific payment title
+        $order->set_status('pending', __('Order created via multi-step checkout.', 'multistep-checkout'));
     }
 
     /**
-     * Redirect to the order pay page after creating the order
+     * Redirect to the payment page after order creation
      *
      * @param int $order_id
      * @param array $posted_data
@@ -105,6 +104,15 @@ class Multistep_Checkout {
         if (empty($_POST['billing_first_name'])) {
             wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
         }
+    }
+
+    /**
+     * Customize the order-pay page (optional)
+     *
+     * @param int $order_id
+     */
+    public function customize_order_pay_page($order_id) {
+        echo '<p>' . __('Please select a payment method to complete your order.', 'multistep-checkout') . '</p>';
     }
 }
 
