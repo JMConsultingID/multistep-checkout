@@ -29,6 +29,12 @@ class Multistep_Checkout {
         // Set default payment method after order is created
         add_action('woocommerce_checkout_order_created', [$this, 'set_default_payment_method']);
 
+                // Force redirect to the order pay page
+        add_action('woocommerce_checkout_process', [$this, 'force_redirect_to_order_pay']);
+
+        // Redirect to the order pay page after order creation
+        add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay'], 20);
+
         add_action('woocommerce_thank_you', [$this, 'force_redirect_to_order_pay'], 20);
 
         // Ensure form validation works as intended
@@ -42,6 +48,8 @@ class Multistep_Checkout {
 
         // Ensure payment method is valid before processing
         add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_pending_orders'], 10, 2);
+
+        add_action('template_redirect', [$this, 'clear_notices_on_order_pay']);
 
         // Clear WooCommerce notices
         add_filter('woocommerce_checkout_no_payment_needed', '__return_true');
@@ -203,6 +211,12 @@ class Multistep_Checkout {
      */
     public function customize_order_pay_page($order_id) {
         echo '<p>' . __('Please select a payment method to complete your order.', 'multistep-checkout') . '</p>';
+    }
+
+    public function clear_notices_on_order_pay() {
+        if (is_wc_endpoint_url('order-pay')) {
+            wc_clear_notices();
+        }
     }
 }
 
