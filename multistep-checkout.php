@@ -79,7 +79,6 @@ class Multistep_Checkout {
 
         // Redirect to order-pay page
         WC()->session->set('order_awaiting_payment', $order_id);
-        WC()->cart->empty_cart();
 
         $pay_url = $order->get_checkout_payment_url(true);
         if ($pay_url) {
