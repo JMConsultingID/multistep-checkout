@@ -14,57 +14,43 @@ if (!defined('ABSPATH')) {
 class Multistep_Checkout {
 
     public function __construct() {
-        // Hook into WooCommerce checkout fields to modify them
-        add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
+        // Hook into WooCommerce checkout process to bypass payment validation
+        add_action('woocommerce_checkout_process', [$this, 'bypass_payment_validation']);
 
-        // Hook into the checkout process to modify order creation
-        add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
-
-        // Ensure form validation works as intended
-        add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
+        // Redirect to the order-pay page after order creation
+        add_action('woocommerce_thankyou', [$this, 'redirect_to_order_pay'], 1);
     }
 
     /**
-     * Customize WooCommerce checkout fields
-     *
-     * @param array $fields
-     * @return array
+     * Bypass payment validation during checkout process
      */
-    public function customize_checkout_fields($fields) {
-        // Remove shipping fields
-        unset($fields['shipping']);
-
-        // Optionally remove some billing fields
-        unset($fields['billing']['billing_company']);
-        unset($fields['billing']['billing_address_2']);
-
-        return $fields;
+    public function bypass_payment_validation() {
+        // Disable default payment requirement (optional)
+        add_filter('woocommerce_order_needs_payment', '__return_false');
     }
 
     /**
-     * Redirect to the order pay page after creating the order
+     * Redirect to the order-pay page after creating the order
      *
      * @param int $order_id
      */
     public function redirect_to_order_pay($order_id) {
+        if (!$order_id) return;
+
+        // Get the order
         $order = wc_get_order($order_id);
 
-        // Set order status to pending payment
-        $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
-
-        // Redirect to the order pay page
-        wp_redirect($order->get_checkout_payment_url());
-        exit;
-    }
-
-    /**
-     * Validate checkout fields
-     */
-    public function validate_checkout_fields() {
-        // Example validation: Ensure first name is filled in
-        if (empty($_POST['billing_first_name'])) {
-            wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
+        // Set order status to 'Pending Payment'
+        if ($order->get_status() !== 'pending') {
+            $order->update_status('pending', __('Awaiting payment', 'multistep-checkout'));
         }
+
+        // Generate the order-pay URL
+        $order_pay_url = $order->get_checkout_payment_url();
+
+        // Redirect to the order-pay page
+        wp_redirect($order_pay_url);
+        exit;
     }
 }
 
