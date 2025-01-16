@@ -26,8 +26,8 @@ class Multistep_Checkout {
         // Bypass WooCommerce payment validation on checkout
         add_action('woocommerce_checkout_process', [$this, 'bypass_payment_validation']);
 
-        // Set default payment method during order creation
-        add_action('woocommerce_checkout_create_order', [$this, 'set_default_payment_method'], 10, 2);
+        // Set default payment method after order is created
+        add_action('woocommerce_checkout_order_created', [$this, 'set_default_payment_method']);
 
         // Redirect to the order pay page after order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay'], 20);
@@ -72,12 +72,16 @@ class Multistep_Checkout {
     }
 
     /**
-     * Set default payment method during order creation
+     * Set default payment method after order is created
      *
      * @param WC_Order $order
-     * @param array $data
      */
-    public function set_default_payment_method($order, $data) {
+    public function set_default_payment_method($order) {
+        if (!$order || !$order->get_id()) {
+            error_log('Failed to set payment method. Invalid Order object or Order ID: ' . ($order ? $order->get_id() : 'NULL'));
+            return;
+        }
+
         $payment_method = 'bacs'; // Use a valid payment method ID as a placeholder
         $order->set_payment_method($payment_method);
         $order->add_order_note(__('Default payment method set to BACS.', 'multistep-checkout'));
