@@ -62,7 +62,9 @@ class Multistep_Checkout {
      * @param WC_Order $order
      */
     public function set_dummy_payment_method($order) {
-        $order->set_payment_method('bacs'); // Use a valid payment method ID as a placeholder
+        $payment_method = 'bacs'; // Use a valid payment method ID as a placeholder
+        $order->set_payment_method($payment_method);
+        $order->add_order_note(__('Payment method set to BACS as placeholder.', 'multistep-checkout'));
     }
 
     /**
@@ -74,7 +76,9 @@ class Multistep_Checkout {
         $order = wc_get_order($order_id);
 
         // Set order status to pending payment
-        $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
+        if ($order->get_status() !== 'pending') {
+            $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
+        }
 
         // Redirect to the order pay page
         wp_redirect($order->get_checkout_payment_url());
