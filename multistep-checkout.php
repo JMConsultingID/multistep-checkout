@@ -26,6 +26,9 @@ class Multistep_Checkout {
         // Automatically set a dummy payment method for bypassing payment validation
         add_action('woocommerce_checkout_create_order', [$this, 'set_dummy_payment_method']);
 
+        // Bypass payment validation during checkout
+        add_filter('woocommerce_payment_complete_order_status', [$this, 'bypass_payment_status'], 10, 3);
+
         // Hook into the checkout process to modify order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
 
@@ -107,6 +110,21 @@ class Multistep_Checkout {
             $statuses[] = 'pending';
         }
         return $statuses;
+    }
+
+    /**
+     * Bypass payment status validation
+     *
+     * @param string $status
+     * @param int $order_id
+     * @param WC_Order $order
+     * @return string
+     */
+    public function bypass_payment_status($status, $order_id, $order) {
+        if ($order->get_payment_method() === 'bacs') {
+            return 'pending';
+        }
+        return $status;
     }
 
     /**
