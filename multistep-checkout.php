@@ -46,6 +46,13 @@ class Multistep_Checkout {
 
         // Ensure payment method is valid before processing
         add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_pending_orders'], 10, 2);
+
+        // Clear WooCommerce notices
+        add_filter('woocommerce_checkout_no_payment_needed', '__return_true');
+        add_action('woocommerce_checkout_order_processed', function($order_id) {
+            wc_clear_notices();
+            error_log('Notices cleared after order processing for Order ID: ' . $order_id);
+        });
     }
 
     /**
@@ -97,14 +104,19 @@ class Multistep_Checkout {
      * Force redirect to the order pay page
      */
     public function force_redirect_to_order_pay() {
-        if (!wc_notice_count('error')) {
-            $order_id = WC()->session->get('order_awaiting_payment');
-            if ($order_id) {
-                $order = wc_get_order($order_id);
-                if ($order && $order->get_status() === 'pending-payment') {
-                    wp_redirect($order->get_checkout_payment_url());
-                    exit;
-                }
+        // Hapus semua notifikasi error
+        wc_clear_notices();
+        error_log('Cleared WooCommerce notices.');
+
+        $order_id = WC()->session->get('order_awaiting_payment');
+        if ($order_id) {
+            $order = wc_get_order($order_id);
+            if ($order && $order->get_status() === 'pending-payment') {
+                $redirect_url = $order->get_checkout_payment_url();
+                error_log('Forcing redirect to: ' . $redirect_url);
+
+                wp_redirect($redirect_url);
+                exit;
             }
         }
     }
@@ -125,12 +137,12 @@ class Multistep_Checkout {
             return;
         }
 
-        // Set order status to pending
-        if ($order->get_status() !== 'pending') {
-            $order->update_status('pending', __('Order created, waiting for payment.', 'multistep-checkout'));
+        // Set order status to pending payment
+        if ($order->get_status() !== 'pending-payment') {
+            $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
         }
 
-        // Redirect to the order pay page
+        // Build the redirect URL with 'pay_for_order' and 'key'
         $redirect_url = add_query_arg(
             ['pay_for_order' => 'true', 'key' => $order->get_order_key()],
             $order->get_checkout_payment_url()
@@ -138,6 +150,7 @@ class Multistep_Checkout {
 
         error_log('Redirecting user to: ' . $redirect_url);
 
+        // Perform the redirect
         wp_redirect($redirect_url);
         exit;
     }
