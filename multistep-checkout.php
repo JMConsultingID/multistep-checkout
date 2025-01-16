@@ -21,7 +21,7 @@ class Multistep_Checkout {
         add_filter('woocommerce_cart_needs_payment', '__return_false', 10, 2);
 
         // Allow order creation without payment methods
-        add_filter('woocommerce_order_needs_payment', '__return_false', 10, 2);
+        add_filter('woocommerce_order_needs_payment', [$this, 'set_order_payment_method'], 10, 2);
 
         // Automatically set a temporary payment method
         add_action('woocommerce_checkout_create_order', [$this, 'set_order_payment_method'], 10, 2);
