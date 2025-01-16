@@ -125,15 +125,23 @@ class Multistep_Checkout {
             return;
         }
 
-        // Set order status to pending payment
-        if ($order->get_status() !== 'pending-payment') {
-            $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
+        // Set order status to pending
+        if ($order->get_status() !== 'pending') {
+            $order->update_status('pending', __('Order created, waiting for payment.', 'multistep-checkout'));
         }
 
         // Redirect to the order pay page
-        wp_redirect($order->get_checkout_payment_url());
+        $redirect_url = add_query_arg(
+            ['pay_for_order' => 'true', 'key' => $order->get_order_key()],
+            $order->get_checkout_payment_url()
+        );
+
+        error_log('Redirecting user to: ' . $redirect_url);
+
+        wp_redirect($redirect_url);
         exit;
     }
+
 
     /**
      * Validate checkout fields
