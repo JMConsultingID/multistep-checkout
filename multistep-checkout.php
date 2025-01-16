@@ -73,8 +73,8 @@ class Multistep_Checkout {
     public function set_dummy_payment_method($order) {
         $order->set_payment_method($this->dummy_payment_method_id);
         $order->add_order_note(__('Payment method temporarily set for multi-step checkout.', 'multistep-checkout')); 
+        $order->save(); // Save the order after setting payment method and adding note
     }
-
     /**
      * Redirect to the order pay page after creating the order
      *
@@ -87,6 +87,18 @@ class Multistep_Checkout {
         if ($order->get_status() !== 'pending') {
             $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
         }
+
+        // Redirect to the order pay page
+        wp_redirect($order->get_checkout_payment_url());
+        exit;
+    }
+
+    public function redirect_to_order_pay($order_id) {
+        $order = wc_get_order($order_id);
+
+        // Set order status to pending payment (ensure order is saved)
+        $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
+        $order->save(); 
 
         // Redirect to the order pay page
         wp_redirect($order->get_checkout_payment_url());
