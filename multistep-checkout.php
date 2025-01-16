@@ -3,7 +3,7 @@
  * Plugin Name: Multistep Checkout
  * Description: A plugin to implement a multi-step checkout process in WooCommerce.
  * Version: 1.0.0
- * Author: YPF
+ * Author: Your Name
  * Text Domain: multistep-checkout
  */
 
@@ -16,6 +16,9 @@ class Multistep_Checkout {
     public function __construct() {
         // Hook into WooCommerce checkout fields to modify them
         add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
+
+        // Remove payment options from checkout page
+        add_filter('woocommerce_cart_needs_payment', '__return_false');
 
         // Hook into the checkout process to modify order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
