@@ -62,6 +62,11 @@ class Multistep_Checkout {
      * @param WC_Order $order
      */
     public function set_dummy_payment_method($order) {
+        if (!$order || !$order->get_id()) {
+            error_log('Failed to set payment method. Invalid Order object or Order ID: ' . ($order ? $order->get_id() : 'NULL'));
+            return;
+        }
+
         $payment_method = 'bacs'; // Use a valid payment method ID as a placeholder
         $order->set_payment_method($payment_method);
         $order->add_order_note(__('Payment method set to BACS as placeholder.', 'multistep-checkout'));
@@ -69,6 +74,7 @@ class Multistep_Checkout {
         // Log the action
         error_log('Dummy payment method set for Order ID: ' . $order->get_id());
     }
+
 
     /**
      * Redirect to the order pay page after creating the order
