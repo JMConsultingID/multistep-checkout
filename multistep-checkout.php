@@ -74,6 +74,13 @@ class Multistep_Checkout {
      * @param WC_Order $order
      */
     public function set_cod_payment_method($order) {
+        if (!$order || !$order->get_id()) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[Multistep Checkout] Failed to set payment method: Invalid Order.');
+            }
+            return;
+        }
+
         $payment_method = 'cod'; // Use COD as the default payment method
         $order->set_payment_method($payment_method);
 
@@ -86,13 +93,28 @@ class Multistep_Checkout {
         }
     }
 
+
     /**
      * Redirect to the order pay page after creating the order
      *
      * @param int $order_id
      */
     public function redirect_to_order_pay($order_id) {
+        if (!$order_id) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[Multistep Checkout] Redirect failed: Invalid Order ID.');
+            }
+            return;
+        }
+
         $order = wc_get_order($order_id);
+
+        if (!$order) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[Multistep Checkout] Redirect failed: Order not found for ID ' . $order_id);
+            }
+            return;
+        }
 
         // Set order status to pending payment
         if ($order->get_status() !== 'pending') {
@@ -103,6 +125,7 @@ class Multistep_Checkout {
         wp_redirect($order->get_checkout_payment_url());
         exit;
     }
+
 
     /**
      * Validate checkout fields
