@@ -104,7 +104,7 @@ class Multistep_Checkout {
      * Force redirect to the order pay page
      */
     public function force_redirect_to_order_pay() {
-        // Hapus semua notifikasi error
+        // Clear all notices
         wc_clear_notices();
         error_log('Cleared WooCommerce notices.');
 
@@ -112,14 +112,23 @@ class Multistep_Checkout {
         if ($order_id) {
             $order = wc_get_order($order_id);
             if ($order && $order->get_status() === 'pending-payment') {
-                $redirect_url = $order->get_checkout_payment_url();
+                // Add success notice
+                wc_add_notice(__('Redirecting to payment page. Please wait...', 'multistep-checkout'), 'success');
+
+                // Build the redirect URL
+                $redirect_url = add_query_arg(
+                    ['pay_for_order' => 'true', 'key' => $order->get_order_key()],
+                    $order->get_checkout_payment_url()
+                );
                 error_log('Forcing redirect to: ' . $redirect_url);
 
+                // Redirect to order pay page
                 wp_redirect($redirect_url);
                 exit;
             }
         }
     }
+
 
     /**
      * Redirect to the order pay page after creating the order
