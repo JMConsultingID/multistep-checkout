@@ -25,17 +25,24 @@ class Multistep_Checkout {
         // Remove payment options from checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
-        // Allow order creation without payment methods
-        add_filter('woocommerce_order_needs_payment', '__return_false');
+        // Ensure chosen payment method is set in session
+        add_action('woocommerce_before_checkout_process', [$this, 'set_chosen_payment_method']);
 
-        add_action('woocommerce_checkout_order_processed', [$this, 'handle_order_and_redirect'], 10, 1);
+        // Add hidden payment method field to checkout form
+        add_action('woocommerce_review_order_before_submit', [$this, 'add_hidden_payment_method_field']);
 
-        // Validate checkout fields
-        add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
+        // Set default payment method after order is created
+        add_action('woocommerce_checkout_order_created', [$this, 'set_default_payment_method']);
+
+        // Redirect to the order pay page after order creation
+        add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay']);
 
         // Debugging and error logging
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
         add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
+
+        // Ensure at least one payment gateway is available
+        add_filter('woocommerce_available_payment_gateways', [$this, 'filter_available_payment_gateways']);
     }
 
     /**
@@ -56,32 +63,58 @@ class Multistep_Checkout {
     }
 
     /**
-     * Set default payment method and redirect to the order pay page
-     *
-     * @param int $order_id
+     * Set chosen payment method in session
      */
-    public function handle_order_and_redirect($order_id) {
-        $order = wc_get_order($order_id);
+    public function set_chosen_payment_method() {
+        if (WC()->session) {
+            WC()->session->set('chosen_payment_method', 'bacs');
+            error_log('Chosen payment method set to BACS.');
+        }
+    }
 
+    /**
+     * Add hidden payment method field to checkout form
+     */
+    public function add_hidden_payment_method_field() {
+        echo '<input type="hidden" name="payment_method" value="bacs">';
+    }
+
+    /**
+     * Set default payment method after order is created
+     *
+     * @param WC_Order $order
+     */
+    public function set_default_payment_method($order) {
         if (!$order || !$order->get_id()) {
-            error_log('Failed to process order. Invalid Order object or Order ID: ' . ($order ? $order->get_id() : 'NULL'));
+            error_log('Failed to set payment method. Invalid Order object or Order ID: ' . ($order ? $order->get_id() : 'NULL'));
             return;
         }
 
-        // Set default payment method
         $order->set_payment_method('bacs');
         $order->set_payment_method_title(__('Bank Transfer', 'multistep-checkout'));
         $order->add_order_note(__('Default payment method set to Bank Transfer.', 'multistep-checkout'));
         $order->save();
 
         error_log('Default payment method set for Order ID: ' . $order->get_id());
+    }
 
-        // Update order status to pending
-        if ($order->get_status() !== 'pending') {
-            $order->update_status('pending', __('Order created and waiting for payment.', 'multistep-checkout'));
+    /**
+     * Redirect to the order pay page after creating the order
+     *
+     * @param int $order_id
+     */
+    public function redirect_to_order_pay($order_id) {
+        $order = wc_get_order($order_id);
+
+        if (!$order) {
+            error_log('Order not found for Order ID: ' . $order_id);
+            return;
         }
 
-        // Redirect to the order pay page
+        if ($order->get_status() !== 'pending') {
+            $order->update_status('pending', __('Order updated for payment.', 'multistep-checkout'));
+        }
+
         $redirect_url = add_query_arg(
             ['pay_for_order' => 'true', 'key' => $order->get_order_key()],
             $order->get_checkout_payment_url()
@@ -91,15 +124,6 @@ class Multistep_Checkout {
 
         wp_redirect($redirect_url);
         exit;
-    }
-
-    /**
-     * Validate checkout fields
-     */
-    public function validate_checkout_fields() {
-        if (empty($_POST['billing_first_name'])) {
-            wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
-        }
     }
 
     /**
@@ -121,6 +145,19 @@ class Multistep_Checkout {
             $notices = wc_get_notices('error');
             error_log('Checkout Errors: ' . print_r($notices, true));
         }
+    }
+
+    /**
+     * Filter available payment gateways to ensure at least one is available
+     *
+     * @param array $gateways
+     * @return array
+     */
+    public function filter_available_payment_gateways($gateways) {
+        if (is_checkout()) {
+            $gateways = ['bacs' => $gateways['bacs']]; // Retain only the BACS gateway
+        }
+        return $gateways;
     }
 }
 
