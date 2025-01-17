@@ -17,6 +17,9 @@ class Multistep_Checkout {
         // Remove payment options from checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
+        // Set default payment method and redirect to order pay page after order creation
+        add_action('woocommerce_checkout_order_processed', [$this, 'process_order_and_redirect']);
+
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
         add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
     }
@@ -59,8 +62,8 @@ class Multistep_Checkout {
 
         error_log('Redirecting user to: ' . $redirect_url);
 
-        wp_redirect($redirect_url);
-        exit;
+        // wp_redirect($redirect_url);
+        // exit;
     }
 
 
