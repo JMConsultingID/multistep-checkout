@@ -25,6 +25,8 @@ class Multistep_Checkout {
         // Remove payment options from checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
+        add_filter( 'woocommerce_available_payment_gateways', 'remove_payment_gateways_from_checkout' ); 
+
         // Allow order creation without payment methods
         //add_filter('woocommerce_order_needs_payment', '__return_false');
 
@@ -82,6 +84,13 @@ class Multistep_Checkout {
         error_log('Bypassed payment validation on checkout.');
     }
 
+
+
+    public function remove_payment_gateways_from_checkout( $available_gateways ) {
+        // Unset all available gateways
+        $available_gateways = array(); 
+        return $available_gateways; 
+    }
     /**
      * Set default payment method after order is created
      *
