@@ -26,42 +26,34 @@ class Multistep_Checkout {
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
         // Allow order creation without payment methods
-        add_filter('woocommerce_order_needs_payment', '__return_false');
+        //add_filter('woocommerce_order_needs_payment', '__return_false');
 
         // Bypass WooCommerce payment validation on checkout
-        add_action('woocommerce_checkout_process', [$this, 'bypass_payment_validation']);
+        //add_action('woocommerce_checkout_process', [$this, 'bypass_payment_validation']);
 
         // Set default payment method after order is created
         //add_action('woocommerce_checkout_order_created', [$this, 'set_default_payment_method']);
 
         // Force redirect to the order pay page
-        add_action('woocommerce_checkout_process', [$this, 'force_redirect_to_order_pay']);
+        //add_action('woocommerce_checkout_process', [$this, 'force_redirect_to_order_pay']);
 
         // Redirect to the order pay page after order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay'], 20);
-
-        add_action('woocommerce_thank_you', [$this, 'force_redirect_to_order_pay'], 20);
 
         // Ensure form validation works as intended
         add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
 
         // Add hidden payment method field to checkout form
-        add_action('woocommerce_review_order_before_submit', [$this, 'add_hidden_payment_method_field']);
+        //add_action('woocommerce_review_order_before_submit', [$this, 'add_hidden_payment_method_field']);
 
         // Modify order-pay page (optional customization)
-        add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
+        //add_action('woocommerce_receipt', [$this, 'customize_order_pay_page']);
 
         // Ensure payment method is valid before processing
-        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_pending_orders'], 10, 2);
+        //add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'allow_payment_for_pending_orders'], 10, 2);
 
-        add_action('template_redirect', [$this, 'clear_notices_on_order_pay']);
+        //add_action('template_redirect', [$this, 'clear_notices_on_order_pay']);
 
-        // Clear WooCommerce notices
-        add_filter('woocommerce_checkout_no_payment_needed', '__return_true');
-        add_action('woocommerce_checkout_order_processed', function($order_id) {
-            wc_clear_notices();
-            error_log('Notices cleared after order processing for Order ID: ' . $order_id);
-        });
     }
 
     /**
