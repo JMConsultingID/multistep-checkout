@@ -147,10 +147,9 @@ class Multistep_Checkout {
             return;
         }
 
-        // Set order status to pending payment
-        if ($order->get_status() !== 'pending-payment') {
-            $order->update_status('pending-payment', __('Order created, waiting for payment.', 'multistep-checkout'));
-        }
+
+        $order->update_status('pending', __('Order created, waiting for payment.', 'multistep-checkout'));
+
 
         // Build the redirect URL with 'pay_for_order' and 'key'
         $redirect_url = add_query_arg(
@@ -191,10 +190,7 @@ class Multistep_Checkout {
      * @return array
      */
     public function allow_payment_for_pending_orders($statuses, $order) {
-        if (!in_array('pending-payment', $statuses)) {
-            $statuses[] = 'pending-payment';
-        }
-        if (!in_array('pending', $statuses)) {
+        if ($order->get_status() === 'pending') {
             $statuses[] = 'pending';
         }
 
@@ -203,7 +199,6 @@ class Multistep_Checkout {
 
         return $statuses;
     }
-
 
     /**
      * Customize the order-pay page (optional)
