@@ -2,188 +2,124 @@
 /**
  * Plugin Name: Multistep Checkout
  * Description: A plugin to implement a multi-step checkout process in WooCommerce.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Your Name
  * Text Domain: multistep-checkout
  */
 
 if (!defined('ABSPATH')) {
-    exit;
+    exit; // Exit if accessed directly.
 }
+
+// Define constants for plugin paths.
+define('MLT_CHECKOUT_VERSION', '1.1.0');
+define('MLT_CHECKOUT_DIR', plugin_dir_path(__FILE__));
+define('MLT_CHECKOUT_URL', plugin_dir_url(__FILE__));
 
 class Multistep_Checkout {
 
     public function __construct() {
-        // Core checkout modifications
+        // Hook into WooCommerce checkout fields to modify them
         add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
-        
-        // Remove payment step from initial checkout
+
+        // Remove payment options from checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
-        add_filter('woocommerce_checkout_update_order_review_expired', '__return_false');
-        add_filter('woocommerce_available_payment_gateways', [$this, 'remove_payment_gateways_from_checkout']);
-        
-        // Critical filters for order creation without payment
-        add_filter('woocommerce_checkout_require_payment', '__return_false', 999);
+
+        // Allow order creation without payment methods
         add_filter('woocommerce_order_needs_payment', '__return_false');
-        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'add_pending_to_valid_statuses'], 10, 2);
-        
-        // Remove default WooCommerce order validation
-        add_filter('woocommerce_can_reduce_order_stock', '__return_false');
-        
-        // Handle checkout process
-        add_action('woocommerce_checkout_process', [$this, 'custom_checkout_process'], 1);
-        add_action('woocommerce_checkout_create_order', [$this, 'setup_new_order'], 10, 2);
-        add_action('woocommerce_checkout_order_created', [$this, 'handle_order_creation'], 999);
-        
-        // Debug logging
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
-            add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
-        }
+
+        // Set default payment method after order is created
+        add_action('woocommerce_checkout_order_created', [$this, 'set_default_payment_method']);
+
+        // Redirect to the order pay page after order creation
+        add_action('woocommerce_checkout_order_processed', [$this, 'redirect_to_order_pay'], 10, 3);
+
+        // Validate checkout fields
+        add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
+
+        // Debugging and error logging
+        add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
+        add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
     }
 
+    /**
+     * Customize WooCommerce checkout fields
+     *
+     * @param array $fields
+     * @return array
+     */
     public function customize_checkout_fields($fields) {
-        // Remove unnecessary fields
+        // Remove shipping fields
         unset($fields['shipping']);
+
+        // Optionally remove some billing fields
         unset($fields['billing']['billing_company']);
         unset($fields['billing']['billing_address_2']);
-        
+
         return $fields;
     }
 
-    public function remove_payment_gateways_from_checkout($gateways) {
-        if (is_checkout() && !is_wc_endpoint_url('order-pay')) {
-            return array();
+    /**
+     * Set default payment method after order is created
+     *
+     * @param WC_Order $order
+     */
+    public function set_default_payment_method($order) {
+        if (!$order || !$order->get_id()) {
+            error_log('Failed to set payment method. Invalid Order object or Order ID: ' . ($order ? $order->get_id() : 'NULL'));
+            return;
         }
-        return $gateways;
+
+        $order->set_payment_method('bacs');
+        $order->set_payment_method_title(__('Bank Transfer', 'multistep-checkout'));
+        $order->add_order_note(__('Default payment method set to Bank Transfer.', 'multistep-checkout'));
+        $order->save();
+
+        // Log the action
+        error_log('Default payment method set for Order ID: ' . $order->get_id());
     }
 
-    public function add_pending_to_valid_statuses($statuses, $order) {
-        if (!in_array('pending', $statuses)) {
-            $statuses[] = 'pending';
+    /**
+     * Redirect to the order pay page after creating the order
+     *
+     * @param int $order_id
+     */
+    public function redirect_to_order_pay($order_id) {
+        $order = wc_get_order($order_id);
+
+        if (!$order) {
+            error_log('Order not found for Order ID: ' . $order_id);
+            return;
         }
-        return $statuses;
-    }
 
-    public function custom_checkout_process() {
-        try {
-            // Remove payment validation
-            remove_all_actions('woocommerce_checkout_process');
-            
-            // Clear existing notices
-            wc_clear_notices();
-            
-            // Validate fields
-            $this->validate_checkout_fields();
-            
-        } catch (Exception $e) {
-            wc_add_notice($e->getMessage(), 'error');
-            error_log('Checkout Process Error: ' . $e->getMessage());
+        if ($order->get_status() !== 'pending') {
+            $order->update_status('pending', __('Order created and waiting for payment.', 'multistep-checkout'));
         }
-    }
 
-    public function setup_new_order($order, $data) {
-        // Set empty payment method
-        $order->set_payment_method('');
-        $order->set_payment_method_title('');
-        
-        // Set order status
-        $order->set_status('pending', 'Order created via multistep checkout.');
-        
-        // Save customer data
-        $this->save_customer_data($order);
-        
-        return $order;
-    }
-
-    private function save_customer_data($order) {
-        if (!empty($_POST['billing_email'])) {
-            $order->set_customer_id(email_exists($_POST['billing_email']));
-        }
-        
-        // Save billing email as customer note
-        $order->set_customer_note(sprintf(
-            'Customer email: %s',
-            sanitize_email($_POST['billing_email'])
-        ));
-    }
-
-    public function handle_order_creation($order) {
-        try {
-            if (!$order || !is_a($order, 'WC_Order')) {
-                throw new Exception('Invalid order object');
-            }
-
-            // Ensure proper status and meta
-            $order->update_status('pending', __('Awaiting payment selection.', 'multistep-checkout'));
-            update_post_meta($order->get_id(), '_created_via', 'multistep_checkout');
-
-            // Generate payment URL with necessary parameters
-            $pay_url = add_query_arg(
-                array(
-                    'pay_for_order' => true,
-                    'key' => $order->get_order_key(),
-                    'order_id' => $order->get_id(),
-                    'from_multistep' => 1
-                ),
-                $order->get_checkout_payment_url()
-            );
-
-            // Clear session and cart
-            WC()->session->set('chosen_payment_method', '');
-            WC()->cart->empty_cart();
-
-            // Log success
-            error_log(sprintf('Successfully created order %d. Redirecting to: %s', 
-                $order->get_id(), 
-                $pay_url
-            ));
-
-            // Redirect to payment page
-            wp_safe_redirect($pay_url);
-            exit;
-
-        } catch (Exception $e) {
-            error_log('Order Creation Error: ' . $e->getMessage());
-            wc_add_notice(__('There was an error processing your order. Please try again.', 'multistep-checkout'), 'error');
-            wp_safe_redirect(wc_get_checkout_url());
-            exit;
-        }
-    }
-
-    public function validate_checkout_fields() {
-        $required_fields = array(
-            'billing_first_name' => __('First name', 'woocommerce'),
-            'billing_last_name'  => __('Last name', 'woocommerce'),
-            'billing_email'      => __('Email address', 'woocommerce'),
-            'billing_phone'      => __('Phone', 'woocommerce'),
-            'billing_country'    => __('Country', 'woocommerce'),
-            'billing_address_1'  => __('Address', 'woocommerce'),
-            'billing_city'       => __('City', 'woocommerce'),
-            'billing_state'      => __('State', 'woocommerce'),
-            'billing_postcode'   => __('Postcode', 'woocommerce')
+        $redirect_url = add_query_arg(
+            ['pay_for_order' => 'true', 'key' => $order->get_order_key()],
+            $order->get_checkout_payment_url()
         );
 
-        $missing_fields = array();
-        foreach ($required_fields as $field_key => $field_name) {
-            if (empty($_POST[$field_key])) {
-                $missing_fields[] = $field_name;
-            }
-        }
+        error_log('Redirecting user to: ' . $redirect_url);
 
-        if (!empty($missing_fields)) {
-            throw new Exception(sprintf(
-                __('Please fill in the following fields: %s', 'woocommerce'),
-                implode(', ', $missing_fields)
-            ));
-        }
+        // Perform the redirect
+        wp_redirect($redirect_url);
+        exit;
+    }
 
-        // Validate email format
-        if (!empty($_POST['billing_email']) && !is_email($_POST['billing_email'])) {
-            throw new Exception(__('Invalid email address.', 'woocommerce'));
+    /**
+     * Validate checkout fields
+     */
+    public function validate_checkout_fields() {
+        if (empty($_POST['billing_first_name'])) {
+            wc_add_notice(__('Please fill in your billing first name.', 'multistep-checkout'), 'error');
         }
     }
 
+    /**
+     * Debug checkout data
+     */
     public function debug_checkout_data() {
         error_log('--------- Checkout Debug Start ---------');
         error_log('POST data: ' . print_r($_POST, true));
@@ -192,16 +128,16 @@ class Multistep_Checkout {
         error_log('--------- Checkout Debug End ---------');
     }
 
+    /**
+     * Log checkout errors
+     */
     public function log_checkout_errors() {
         if (wc_notice_count('error') > 0) {
-            $notices = WC()->session->get('wc_notices', array());
+            $notices = wc_get_notices('error');
             error_log('Checkout Errors: ' . print_r($notices, true));
         }
     }
 }
 
 // Initialize the plugin
-function init_multistep_checkout() {
-    new Multistep_Checkout();
-}
-add_action('plugins_loaded', 'init_multistep_checkout');
+new Multistep_Checkout();
