@@ -25,8 +25,8 @@ class Multistep_Checkout {
         // Set default payment method after order is created
         add_action('woocommerce_checkout_order_created', [$this, 'set_default_payment_method']);
 
-        // Redirect to the order pay page after order creation
-        add_action( 'woocommerce_checkout_order_processed', array( $this, 'redirect_to_order_pay' ), 10, 1 );
+        // Set default payment method and redirect to order pay page after order creation
+        add_action('woocommerce_checkout_order_processed', [$this, 'process_order_and_redirect']);
 
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
         add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
@@ -38,32 +38,7 @@ class Multistep_Checkout {
      *
      * @param WC_Order $order
      */
-    public function set_default_payment_method($order) {
-        if (!$order || !$order->get_id()) {
-            error_log('Failed to set payment method. Invalid Order object or Order ID: ' . ($order ? $order->get_id() : 'NULL'));
-            return;
-        }
-
-        $payment_method = ''; // Use a valid payment method ID as a placeholder
-        $order->set_payment_method($payment_method);
-        $order->set_payment_method_title('');    
-        $order->add_order_note(__('Default payment method.', 'multistep-checkout'));
-        $order->save();
-
-        // Log the action
-        error_log('Default payment method set to BACS for Order ID: ' . $order->get_id());
-    }
-
-
-    /**
-     * Redirect to the order pay page after creating the order
-     *
-     * @param int $order_id
-     */
-    public function redirect_to_order_pay($order_id) {
-        // Log the order ID for debugging
-        error_log('Redirecting to order-pay. Order ID: ' . $order_id);
-
+    public function process_order_and_redirect($order_id) {
         $order = wc_get_order($order_id);
 
         if (!$order) {
@@ -71,11 +46,21 @@ class Multistep_Checkout {
             return;
         }
 
+        // Set default payment method
+        if (!$order->get_payment_method()) {
+            $order->set_payment_method('bacs');
+            $order->set_payment_method_title(__('Bank Transfer', 'multistep-checkout'));
+            $order->add_order_note(__('Default payment method set to Bank Transfer.', 'multistep-checkout'));
+            $order->save();
+            error_log('Default payment method set for Order ID: ' . $order->get_id());
+        }
 
-        $order->update_status('pending', __('Order created, waiting for payment.', 'multistep-checkout'));
+        // Update order status to pending
+        if ($order->get_status() !== 'pending') {
+            $order->update_status('pending', __('Order created and waiting for payment.', 'multistep-checkout'));
+        }
 
-
-        // Build the redirect URL with 'pay_for_order' and 'key'
+        // Redirect to the order pay page
         $redirect_url = add_query_arg(
             ['pay_for_order' => 'true', 'key' => $order->get_order_key()],
             $order->get_checkout_payment_url()
@@ -83,7 +68,6 @@ class Multistep_Checkout {
 
         error_log('Redirecting user to: ' . $redirect_url);
 
-        // Perform the redirect
         wp_redirect($redirect_url);
         exit;
     }
