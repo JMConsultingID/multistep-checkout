@@ -199,7 +199,10 @@ class Multistep_Checkout {
      * @return array
      */
     public function allow_payment_for_pending_orders($statuses, $order) {
-        if ($order->get_status() === 'pending') {
+        if (!in_array('pending-payment', $statuses)) {
+            $statuses[] = 'pending-payment';
+        }
+        if (!in_array('pending', $statuses)) {
             $statuses[] = 'pending';
         }
 
@@ -208,6 +211,7 @@ class Multistep_Checkout {
 
         return $statuses;
     }
+
 
     /**
      * Customize the order-pay page (optional)
