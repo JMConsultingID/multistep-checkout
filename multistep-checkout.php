@@ -8,13 +8,8 @@
  */
 
 if (!defined('ABSPATH')) {
-    exit; // Exit if accessed directly.
+    exit;
 }
-
-// Define plugin constants
-define('MLT_CHECKOUT_VERSION', '1.0');
-define('MLT_CHECKOUT_DIR', plugin_dir_path(__FILE__));
-define('MLT_CHECKOUT_URL', plugin_dir_url(__FILE__));
 
 class Multistep_Checkout {
 
@@ -27,78 +22,35 @@ class Multistep_Checkout {
         add_filter('woocommerce_checkout_update_order_review_expired', '__return_false');
         add_filter('woocommerce_available_payment_gateways', [$this, 'remove_payment_gateways_from_checkout']);
         
-        // Prevent WooCommerce from requiring payment method
+        // Critical filters for order creation without payment
         add_filter('woocommerce_checkout_require_payment', '__return_false', 999);
+        add_filter('woocommerce_order_needs_payment', '__return_false');
+        add_filter('woocommerce_valid_order_statuses_for_payment', [$this, 'add_pending_to_valid_statuses'], 10, 2);
         
-        // Handle order creation and redirect
-        add_action('woocommerce_checkout_process', [$this, 'custom_checkout_process'], 20);
-        add_action('woocommerce_checkout_order_created', [$this, 'handle_order_creation'], 10, 1);
+        // Remove default WooCommerce order validation
+        add_filter('woocommerce_can_reduce_order_stock', '__return_false');
         
-        // Add support for order creation without payment
-        add_filter('woocommerce_create_order', [$this, 'maybe_create_order'], 10, 2);
-        
-        // Handle order status changes
-        add_action('woocommerce_order_status_changed', [$this, 'handle_order_status_change'], 10, 4);
+        // Handle checkout process
+        add_action('woocommerce_checkout_process', [$this, 'custom_checkout_process'], 1);
+        add_action('woocommerce_checkout_create_order', [$this, 'setup_new_order'], 10, 2);
+        add_action('woocommerce_checkout_order_created', [$this, 'handle_order_creation'], 999);
         
         // Debug logging
         if (defined('WP_DEBUG') && WP_DEBUG) {
             add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
             add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
         }
-
-        // Initialize any additional hooks for checkout customization
-        $this->init_checkout_hooks();
     }
 
-    /**
-     * Initialize additional checkout hooks
-     */
-    private function init_checkout_hooks() {
-        // Modify checkout fields display
-        add_filter('woocommerce_checkout_fields', [$this, 'modify_checkout_fields'], 99);
-        
-        // Add custom validation
-        add_action('woocommerce_after_checkout_validation', [$this, 'custom_checkout_validation'], 10, 2);
-        
-        // Handle AJAX actions if needed
-        add_action('wp_ajax_update_order_review', [$this, 'handle_ajax_update_order_review']);
-        add_action('wp_ajax_nopriv_update_order_review', [$this, 'handle_ajax_update_order_review']);
-    }
-
-    /**
-     * Customize checkout fields
-     */
     public function customize_checkout_fields($fields) {
         // Remove unnecessary fields
         unset($fields['shipping']);
         unset($fields['billing']['billing_company']);
         unset($fields['billing']['billing_address_2']);
         
-        // Customize remaining fields if needed
-        $fields['billing']['billing_phone']['priority'] = 20;
-        $fields['billing']['billing_email']['priority'] = 10;
-        
         return $fields;
     }
 
-    /**
-     * Modify checkout fields for display
-     */
-    public function modify_checkout_fields($fields) {
-        // Additional field modifications
-        foreach ($fields as $fieldset_key => $fieldset_fields) {
-            foreach ($fieldset_fields as $field_key => $field) {
-                // Add custom classes or modify attributes
-                $fields[$fieldset_key][$field_key]['class'][] = 'form-row-wide';
-            }
-        }
-        
-        return $fields;
-    }
-
-    /**
-     * Remove payment gateways from checkout
-     */
     public function remove_payment_gateways_from_checkout($gateways) {
         if (is_checkout() && !is_wc_endpoint_url('order-pay')) {
             return array();
@@ -106,33 +58,22 @@ class Multistep_Checkout {
         return $gateways;
     }
 
-    /**
-     * Handle order creation without payment method
-     */
-    public function maybe_create_order($order_id, $checkout) {
-        // Remove payment validation
-        remove_action('woocommerce_checkout_order_processed', 'woocommerce_checkout_process_payment');
-        
-        // Unset payment method from POST data
-        if (isset($_POST['payment_method'])) {
-            unset($_POST['payment_method']);
+    public function add_pending_to_valid_statuses($statuses, $order) {
+        if (!in_array('pending', $statuses)) {
+            $statuses[] = 'pending';
         }
-        
-        return $order_id;
+        return $statuses;
     }
 
-    /**
-     * Custom checkout process
-     */
     public function custom_checkout_process() {
         try {
-            // Remove standard payment validation
-            remove_action('woocommerce_checkout_process', 'woocommerce_checkout_process_payment');
+            // Remove payment validation
+            remove_all_actions('woocommerce_checkout_process');
             
             // Clear existing notices
             wc_clear_notices();
             
-            // Validate required fields
+            // Validate fields
             $this->validate_checkout_fields();
             
         } catch (Exception $e) {
@@ -141,41 +82,63 @@ class Multistep_Checkout {
         }
     }
 
-    /**
-     * Handle order creation and redirect
-     */
+    public function setup_new_order($order, $data) {
+        // Set empty payment method
+        $order->set_payment_method('');
+        $order->set_payment_method_title('');
+        
+        // Set order status
+        $order->set_status('pending', 'Order created via multistep checkout.');
+        
+        // Save customer data
+        $this->save_customer_data($order);
+        
+        return $order;
+    }
+
+    private function save_customer_data($order) {
+        if (!empty($_POST['billing_email'])) {
+            $order->set_customer_id(email_exists($_POST['billing_email']));
+        }
+        
+        // Save billing email as customer note
+        $order->set_customer_note(sprintf(
+            'Customer email: %s',
+            sanitize_email($_POST['billing_email'])
+        ));
+    }
+
     public function handle_order_creation($order) {
         try {
             if (!$order || !is_a($order, 'WC_Order')) {
                 throw new Exception('Invalid order object');
             }
 
-            // Set initial order status
-            $order->update_status('pending', __('Order created, awaiting payment selection.', 'multistep-checkout'));
-            
-            // Clear payment method data
-            update_post_meta($order->get_id(), '_payment_method', '');
-            update_post_meta($order->get_id(), '_payment_method_title', '');
-            
-            // Save order
-            $order->save();
+            // Ensure proper status and meta
+            $order->update_status('pending', __('Awaiting payment selection.', 'multistep-checkout'));
+            update_post_meta($order->get_id(), '_created_via', 'multistep_checkout');
 
-            // Generate payment URL
+            // Generate payment URL with necessary parameters
             $pay_url = add_query_arg(
                 array(
                     'pay_for_order' => true,
                     'key' => $order->get_order_key(),
-                    'order_id' => $order->get_id()
+                    'order_id' => $order->get_id(),
+                    'from_multistep' => 1
                 ),
                 $order->get_checkout_payment_url()
             );
 
-            // Clear session data
+            // Clear session and cart
             WC()->session->set('chosen_payment_method', '');
-            
-            // Clear cart
             WC()->cart->empty_cart();
-            
+
+            // Log success
+            error_log(sprintf('Successfully created order %d. Redirecting to: %s', 
+                $order->get_id(), 
+                $pay_url
+            ));
+
             // Redirect to payment page
             wp_safe_redirect($pay_url);
             exit;
@@ -188,9 +151,6 @@ class Multistep_Checkout {
         }
     }
 
-    /**
-     * Validate checkout fields
-     */
     public function validate_checkout_fields() {
         $required_fields = array(
             'billing_first_name' => __('First name', 'woocommerce'),
@@ -217,45 +177,13 @@ class Multistep_Checkout {
                 implode(', ', $missing_fields)
             ));
         }
-    }
 
-    /**
-     * Custom checkout validation
-     */
-    public function custom_checkout_validation($data, $errors) {
-        // Add any additional validation logic here
-        if (!empty($data['billing_email']) && !is_email($data['billing_email'])) {
-            $errors->add('validation', __('Invalid email address.', 'woocommerce'));
+        // Validate email format
+        if (!empty($_POST['billing_email']) && !is_email($_POST['billing_email'])) {
+            throw new Exception(__('Invalid email address.', 'woocommerce'));
         }
     }
 
-    /**
-     * Handle order status changes
-     */
-    public function handle_order_status_change($order_id, $old_status, $new_status, $order) {
-        error_log(sprintf(
-            'Order %d status changed from %s to %s',
-            $order_id,
-            $old_status,
-            $new_status
-        ));
-    }
-
-    /**
-     * Handle AJAX order review updates
-     */
-    public function handle_ajax_update_order_review() {
-        // Add custom AJAX handling if needed
-        check_ajax_referer('update-order-review', 'security');
-        
-        // Your custom AJAX logic here
-        
-        wp_die();
-    }
-
-    /**
-     * Debug checkout data
-     */
     public function debug_checkout_data() {
         error_log('--------- Checkout Debug Start ---------');
         error_log('POST data: ' . print_r($_POST, true));
@@ -264,9 +192,6 @@ class Multistep_Checkout {
         error_log('--------- Checkout Debug End ---------');
     }
 
-    /**
-     * Log checkout errors
-     */
     public function log_checkout_errors() {
         if (wc_notice_count('error') > 0) {
             $notices = WC()->session->get('wc_notices', array());
