@@ -37,6 +37,8 @@ class Multistep_Checkout {
      */
     public function process_order_and_redirect($order_id) {
         $order = wc_get_order($order_id);
+        $payment_method = ''; // Use a valid payment method ID as a placeholder
+        
 
         if (!$order) {
             error_log('Order not found for Order ID: ' . $order_id);
@@ -45,9 +47,9 @@ class Multistep_Checkout {
 
         // Set default payment method
         if (!$order->get_payment_method()) {
-            $order->set_payment_method('bacs');
-            $order->set_payment_method_title(__('Bank Transfer', 'multistep-checkout'));
-            $order->add_order_note(__('Default payment method set to Bank Transfer.', 'multistep-checkout'));
+            $order->set_payment_method($payment_method);
+            $order->set_payment_method_title(''); 
+            $order->add_order_note(__('Default payment method.', 'multistep-checkout'));
             $order->save();
             error_log('Default payment method set for Order ID: ' . $order->get_id());
         }
