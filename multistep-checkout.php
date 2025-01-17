@@ -24,6 +24,7 @@ class Multistep_Checkout {
 
         // Remove payment options from checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
+        add_filter('woocommerce_checkout_update_order_review_expired', '__return_false');
 
         // Allow order creation without payment methods
         //add_filter('woocommerce_order_needs_payment', '__return_false');
@@ -37,11 +38,18 @@ class Multistep_Checkout {
         // Force redirect to the order pay page
         //add_action('woocommerce_checkout_process', [$this, 'force_redirect_to_order_pay']);
 
+        add_action('woocommerce_checkout_order_processed', [$this, 'custom_checkout_redirect'], 10, 3);
+
         // Redirect to the order pay page after order creation
         add_action( 'woocommerce_checkout_order_created', array( $this, 'redirect_to_order_pay' ), 10, 1 );
 
+        add_action('woocommerce_checkout_process', [$this, 'custom_checkout_process']);
+
         // Ensure form validation works as intended
         add_action('woocommerce_checkout_process', [$this, 'validate_checkout_fields']);
+
+        add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
+        add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
 
         // Add hidden payment method field to checkout form
         //add_action('woocommerce_review_order_before_submit', [$this, 'add_hidden_payment_method_field']);
@@ -102,7 +110,9 @@ class Multistep_Checkout {
 
         $payment_method = ''; // Use a valid payment method ID as a placeholder
         $order->set_payment_method($payment_method);
+        $order->set_payment_method_title('');    
         $order->add_order_note(__('Default payment method.', 'multistep-checkout'));
+        $order->save();
 
         // Log the action
         error_log('Default payment method set to BACS for Order ID: ' . $order->get_id());
@@ -171,6 +181,24 @@ class Multistep_Checkout {
         exit;
     }
 
+    
+    public function custom_checkout_redirect($order_id, $posted_data, $order) {
+        // Log untuk debugging
+        error_log('Processing order ID: ' . $order_id);
+        
+        if ($order) {
+            // Generate payment URL
+            $payment_url = $order->get_checkout_payment_url(true);
+            
+            // Set session untuk mencegah error
+            WC()->session->set('chosen_payment_method', '');
+            
+            // Redirect ke halaman pembayaran
+            wp_redirect($payment_url);
+            exit;
+        }
+    }
+
 
     /**
      * Validate checkout fields
@@ -187,6 +215,14 @@ class Multistep_Checkout {
      */
     public function add_hidden_payment_method_field() {
         echo '<input type="hidden">';
+    }
+
+    public function custom_checkout_process() {
+        // Remove payment validation
+        remove_action('woocommerce_checkout_process', 'woocommerce_checkout_process_payment');
+        
+        // Log untuk debugging
+        error_log('Custom checkout process executed');
     }
 
     /**
@@ -221,6 +257,24 @@ class Multistep_Checkout {
             wc_clear_notices();
         }
     }
+
+
+    public function debug_checkout_data() {
+        error_log('--------- Checkout Debug Start ---------');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('Session data: ' . print_r(WC()->session->get_session_data(), true));
+        error_log('Cart total: ' . WC()->cart->get_total());
+        error_log('--------- Checkout Debug End ---------');
+    }
+
+
+    public function log_checkout_errors() {
+        if (wc_notice_count('error') > 0) {
+            $notices = WC()->session->get('wc_notices', array());
+            error_log('Checkout Errors: ' . print_r($notices, true));
+        }
+    }
+
 }
 
 // Initialize the plugin
