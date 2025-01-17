@@ -41,7 +41,7 @@ class Multistep_Checkout {
         add_action('woocommerce_checkout_order_processed', [$this, 'custom_checkout_redirect'], 10, 3);
 
         // Redirect to the order pay page after order creation
-        add_action( 'woocommerce_checkout_order_processed', array( $this, 'redirect_to_order_pay' ), 10, 1 );
+        add_action( 'woocommerce_checkout_order_created', array( $this, 'redirect_to_order_pay' ), 10, 1 );
 
         add_action('woocommerce_checkout_process', [$this, 'custom_checkout_process']);
 
