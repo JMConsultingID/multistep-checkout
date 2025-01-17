@@ -25,8 +25,6 @@ class Multistep_Checkout {
         // Remove payment options from checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
-        add_filter( 'woocommerce_available_payment_gateways', array( $this, 'remove_payment_gateways_from_checkout' ) );
-
         // Allow order creation without payment methods
         //add_filter('woocommerce_order_needs_payment', '__return_false');
 
