@@ -11,11 +11,6 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
-// Define constants for plugin paths.
-define('MLT_CHECKOUT_VERSION', '1.0');
-define('MLT_CHECKOUT_DIR', plugin_dir_path(__FILE__));
-define('MLT_CHECKOUT_URL', plugin_dir_url(__FILE__));
-
 class Multistep_Checkout {
 
     public function __construct() {
