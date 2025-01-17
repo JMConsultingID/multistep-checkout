@@ -22,9 +22,6 @@ class Multistep_Checkout {
         // Remove payment options from checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
-        // Set default payment method after order is created
-        add_action('woocommerce_checkout_order_created', [$this, 'set_default_payment_method']);
-
         // Set default payment method and redirect to order pay page after order creation
         add_action('woocommerce_checkout_order_processed', [$this, 'process_order_and_redirect']);
 
