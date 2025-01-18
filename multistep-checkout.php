@@ -49,11 +49,9 @@ class Multistep_Checkout {
             error_log('Default payment method set for Order ID: ' . $order->get_id());
         }
 
-        // Update order status to pending
-        if ($order->get_status() !== 'pending') {
-            $order->update_status('pending');
-            error_log('Update Status Pending Order ID: ' . $order->get_id());
-        }
+        $order->update_status('pending');
+        error_log('Update Status Pending Order ID: ' . $order->get_id());
+        
 
         // Redirect to the order pay page
         $redirect_url = add_query_arg(
