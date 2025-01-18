@@ -60,7 +60,6 @@ class Multistep_Checkout {
 
         if ($order->get_total() == 0) {
             // If order total is 0, let WooCommerce handle the flow to Thank You page
-            error_log('Order ID ' . $order_id . ' has zero total, redirecting to Thank You page.');
             return;
         }
 
@@ -68,7 +67,6 @@ class Multistep_Checkout {
             // Redirect unpaid orders to order-pay page
             $redirect_url = $order->get_checkout_payment_url();
             $order->add_order_note(__('Redirecting to order-pay page', 'multistep-checkout'));
-            error_log('Redirecting Order ID ' . $order_id . ' to order-pay page: ' . $redirect_url);
             wp_safe_redirect($redirect_url);
             exit;
         }
@@ -85,11 +83,9 @@ class Multistep_Checkout {
     public function ensure_completed_orders_remain_completed($status, $order_id, $order) {
         // Only adjust orders that are not already completed
         if ($order->get_status() === 'pending') {
-            error_log('Order ID ' . $order_id . ' is pending, keeping status as pending.');
+            $order->add_order_note(__('Order Created 2', 'multistep-checkout'));
             return 'pending'; // Keep pending for unpaid orders
         }
-
-        error_log('Order ID ' . $order_id . ' status remains unchanged: ' . $status);
         return $status; // Return default status for other cases
     }
 }
