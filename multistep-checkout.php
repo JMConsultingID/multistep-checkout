@@ -20,6 +20,8 @@ class Multistep_Checkout {
         // Customize billing fields
         add_filter('woocommerce_checkout_fields', [$this, 'customize_billing_fields'], 15);
 
+        add_action('wp_enqueue_scripts', [$this, 'enable_country_state_scripts'], 20);
+
         // Set order status based on total at checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_order_status_based_on_total'], 10, 3);
 
@@ -40,82 +42,88 @@ class Multistep_Checkout {
      * @return array
      */
     public function customize_billing_fields($fields) {
-        // Unset all default billing fields
-        $fields['billing'] = [];
+        // Reset hanya field yang diperlukan
+        $fields['billing']['billing_first_name'] = [
+            'type'        => 'text',
+            'label'       => __('First Name', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-first'],
+            'placeholder' => __('Enter your first name', 'multistep-checkout'),
+        ];
 
-        // Add custom billing fields
-        $fields['billing'] = [
-            'billing_first_name' => [
-                'type'        => 'text',
-                'label'       => __('First Name', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-first'],
-                'placeholder' => __('Enter your first name', 'multistep-checkout'),
-            ],
-            'billing_last_name' => [
-                'type'        => 'text',
-                'label'       => __('Last Name', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-last'],
-                'placeholder' => __('Enter your last name', 'multistep-checkout'),
-            ],
-            'billing_email' => [
-                'type'        => 'email',
-                'label'       => __('Email', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-first'],
-                'placeholder' => __('Enter your email address', 'multistep-checkout'),
-            ],
-            'billing_phone' => [
-                'type'        => 'tel',
-                'label'       => __('Phone Number', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-last'],
-                'placeholder' => __('Enter your phone number', 'multistep-checkout'),
-            ],
-            'billing_address_1' => [
-                'type'        => 'text',
-                'label'       => __('Address', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-wide'],
-                'placeholder' => __('Enter your address', 'multistep-checkout'),
-            ],
-            'billing_country' => [
-                'type'        => 'select',
-                'label'       => __('Country', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-first'],
-                'options'     => [
-                    ''     => __('Select a country', 'multistep-checkout'),
-                    'US'   => __('United States', 'multistep-checkout'),
-                    'ID'   => __('Indonesia', 'multistep-checkout'),
-                ],
-            ],
-            'billing_state' => [
-                'type'        => 'state',
-                'label'       => __('State/Region', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-last'],
-                'placeholder' => __('Select your state/region', 'multistep-checkout'),
-            ],
-            'billing_city' => [
-                'type'        => 'text',
-                'label'       => __('City', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-first'],
-                'placeholder' => __('Enter your city', 'multistep-checkout'),
-            ],
-            'billing_postcode' => [
-                'type'        => 'text',
-                'label'       => __('Postal Code', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-last'],
-                'placeholder' => __('Enter your postal code', 'multistep-checkout'),
-            ],
+        $fields['billing']['billing_last_name'] = [
+            'type'        => 'text',
+            'label'       => __('Last Name', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-last'],
+            'placeholder' => __('Enter your last name', 'multistep-checkout'),
+        ];
+
+        $fields['billing']['billing_email'] = [
+            'type'        => 'email',
+            'label'       => __('Email', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-first'],
+            'placeholder' => __('Enter your email address', 'multistep-checkout'),
+        ];
+
+        $fields['billing']['billing_phone'] = [
+            'type'        => 'tel',
+            'label'       => __('Phone Number', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-last'],
+            'placeholder' => __('Enter your phone number', 'multistep-checkout'),
+        ];
+
+        $fields['billing']['billing_address_1'] = [
+            'type'        => 'text',
+            'label'       => __('Address', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-wide'],
+            'placeholder' => __('Enter your address', 'multistep-checkout'),
+        ];
+
+        $fields['billing']['billing_country'] = [
+            'type'        => 'country',
+            'label'       => __('Country', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-first', 'address-field', 'update_totals_on_change'],
+        ];
+
+        $fields['billing']['billing_state'] = [
+            'type'        => 'state',
+            'label'       => __('State/Region', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-last', 'address-field'],
+            'placeholder' => __('Select your state/region', 'multistep-checkout'),
+        ];
+
+        $fields['billing']['billing_city'] = [
+            'type'        => 'text',
+            'label'       => __('City', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-first'],
+            'placeholder' => __('Enter your city', 'multistep-checkout'),
+        ];
+
+        $fields['billing']['billing_postcode'] = [
+            'type'        => 'text',
+            'label'       => __('Postal Code', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-last'],
+            'placeholder' => __('Enter your postal code', 'multistep-checkout'),
         ];
 
         return $fields;
     }
+
+    public function enable_country_state_scripts() {
+        if (is_checkout()) {
+            wp_enqueue_script('wc-country-select');
+            wp_enqueue_script('wc-address-i18n');
+        }
+    }
+
 
     /**
      * Set order status based on total at checkout
