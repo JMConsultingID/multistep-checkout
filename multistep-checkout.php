@@ -17,9 +17,6 @@ class Multistep_Checkout {
         // Disable payment options on checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
-        // Modify billing fields
-        add_filter('woocommerce_checkout_fields', [$this, 'customize_billing_fields']);
-        
         // Set order status based on total at checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_order_status_based_on_total'], 10, 3);
 
@@ -28,90 +25,16 @@ class Multistep_Checkout {
 
         // Ensure completed orders remain completed
         add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
-    }
 
-    /**
-     * Unset and add custom billing fields
-     *
-     * @param array $fields
-     * @return array
-     */
-    public function customize_billing_fields($fields) {
-        // Unset default billing fields
-        unset($fields['billing']['billing_company']);
-        unset($fields['billing']['billing_address_2']);
-        unset($fields['billing']['billing_postcode']);
-        unset($fields['billing']['billing_state']);
+        // Inject inline JavaScript and CSS
+        add_action('wp_footer', [$this, 'inject_inline_scripts']);
 
-        // Add custom billing fields
-        $fields['billing']['billing_first_name'] = [
-            'label'    => __('First Name', 'multistep-checkout'),
-            'required' => true,
-            'class'    => ['form-row-first'],
-            'priority' => 10,
-        ];
+        // Customize billing fields
+        add_filter('woocommerce_checkout_fields', [$this, 'customize_billing_fields']);
 
-        $fields['billing']['billing_last_name'] = [
-            'label'    => __('Last Name', 'multistep-checkout'),
-            'required' => true,
-            'class'    => ['form-row-last'],
-            'priority' => 20,
-        ];
-
-        $fields['billing']['billing_email'] = [
-            'label'    => __('Email', 'multistep-checkout'),
-            'required' => true,
-            'class'    => ['form-row-first'],
-            'priority' => 30,
-        ];
-
-        $fields['billing']['billing_phone'] = [
-            'label'    => __('Phone Number', 'multistep-checkout'),
-            'required' => true,
-            'class'    => ['form-row-last'],
-            'priority' => 40,
-        ];
-
-        $fields['billing']['billing_address_1'] = [
-            'label'    => __('Address', 'multistep-checkout'),
-            'required' => true,
-            'class'    => ['form-row-wide'],
-            'priority' => 50,
-        ];
-
-        $fields['billing']['billing_country'] = [
-            'type'     => 'select',
-            'label'    => __('Country', 'multistep-checkout'),
-            'required' => true,
-            'class'    => ['form-row-first', 'update_totals_on_change'],
-            'priority' => 60,
-            'options'  => array_merge(['' => __('Select Country', 'multistep-checkout')], WC()->countries->get_allowed_countries()),
-        ];
-
-        $fields['billing']['billing_state'] = [
-            'type'     => 'select',
-            'label'    => __('State/Region', 'multistep-checkout'),
-            'required' => true,
-            'class'    => ['form-row-last', 'update_totals_on_change'],
-            'priority' => 70,
-            'options'  => ['' => __('Select State', 'multistep-checkout')], // States will be dynamically loaded via JS
-        ];
-
-        $fields['billing']['billing_city'] = [
-            'label'    => __('City', 'multistep-checkout'),
-            'required' => true,
-            'class'    => ['form-row-first'],
-            'priority' => 80,
-        ];
-
-        $fields['billing']['billing_postcode'] = [
-            'label'    => __('Postal Code', 'multistep-checkout'),
-            'required' => true,
-            'class'    => ['form-row-last'],
-            'priority' => 90,
-        ];
-
-        return $fields;
+        // Handle AJAX for loading states dynamically
+        add_action('wp_ajax_get_states_for_country', [$this, 'get_states_for_country']);
+        add_action('wp_ajax_nopriv_get_states_for_country', [$this, 'get_states_for_country']);
     }
 
     /**
@@ -169,8 +92,187 @@ class Multistep_Checkout {
         }
         return $status;
     }
+
+    /**
+     * Inject inline JavaScript and CSS for country/state dropdowns
+     */
+    public function inject_inline_scripts() {
+        if (is_checkout()) {
+            echo '<style>
+                .woocommerce-billing-fields input,
+                .woocommerce-billing-fields select {
+                    width: 100%;
+                    padding: 10px;
+                    margin: 5px 0;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                    background-color: #1a1a1a;
+                    color: #fff;
+                }
+                .woocommerce-billing-fields label {
+                    display: block;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                    color: #fff;
+                }
+                .form-row-first,
+                .form-row-last {
+                    width: 48%;
+                    float: left;
+                    margin-right: 4%;
+                }
+                .form-row-last {
+                    margin-right: 0;
+                }
+                .form-row-wide {
+                    width: 100%;
+                    float: none;
+                    clear: both;
+                }
+                select {
+                    appearance: none;
+                    -webkit-appearance: none;
+                    -moz-appearance: none;
+                }
+            </style>';
+
+            echo '<script>
+                jQuery(document).ready(function ($) {
+                    $("#billing_country").on("change", function () {
+                        var country = $(this).val();
+                        var stateField = $("#billing_state");
+
+                        if (country) {
+                            stateField.prop("disabled", true).html("<option>Loading...</option>");
+
+                            $.ajax({
+                                url: wc_checkout_params.ajax_url,
+                                type: "POST",
+                                data: {
+                                    action: "get_states_for_country",
+                                    country: country,
+                                },
+                                success: function (response) {
+                                    stateField.empty().prop("disabled", false);
+                                    stateField.append("<option value=''>Select State/Region</option>");
+
+                                    $.each(response, function (key, value) {
+                                        stateField.append('<option value="' + key + '">' + value + '</option>');
+                                    });
+                                },
+                                error: function () {
+                                    stateField.empty().prop("disabled", false);
+                                    stateField.append("<option value=''>No states available</option>");
+                                },
+                            });
+                        } else {
+                            stateField.empty().append("<option value=''>Select State/Region</option>");
+                        }
+                    });
+                });
+            </script>';
+        }
+    }
+
+    /**
+     * Customize billing fields
+     *
+     * @param array $fields
+     * @return array
+     */
+    public function customize_billing_fields($fields) {
+        unset($fields['billing']['billing_company']);
+        unset($fields['billing']['billing_address_2']);
+        unset($fields['billing']['billing_postcode']);
+        unset($fields['billing']['billing_state']);
+
+        $fields['billing']['billing_first_name'] = [
+            'label'    => __('First Name', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-first'],
+            'priority' => 10,
+        ];
+
+        $fields['billing']['billing_last_name'] = [
+            'label'    => __('Last Name', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-last'],
+            'priority' => 20,
+        ];
+
+        $fields['billing']['billing_email'] = [
+            'label'    => __('Email', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-first'],
+            'priority' => 30,
+        ];
+
+        $fields['billing']['billing_phone'] = [
+            'label'    => __('Phone Number', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-last'],
+            'priority' => 40,
+        ];
+
+        $fields['billing']['billing_address_1'] = [
+            'label'    => __('Address', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-wide'],
+            'priority' => 50,
+        ];
+
+        $fields['billing']['billing_country'] = [
+            'type'     => 'select',
+            'label'    => __('Country', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-first', 'update_totals_on_change'],
+            'priority' => 60,
+            'options'  => array_merge(['' => __('Select Country', 'multistep-checkout')], WC()->countries->get_allowed_countries()),
+        ];
+
+        $fields['billing']['billing_state'] = [
+            'type'     => 'select',
+            'label'    => __('State/Region', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-last', 'update_totals_on_change'],
+            'priority' => 70,
+            'options'  => ['' => __('Select State', 'multistep-checkout')],
+        ];
+
+        $fields['billing']['billing_city'] = [
+            'label'    => __('City', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-first'],
+            'priority' => 80,
+        ];
+
+        $fields['billing']['billing_postcode'] = [
+            'label'    => __('Postal Code', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-last'],
+            'priority' => 90,
+        ];
+
+        return $fields;
+    }
+
+    /**
+     * Handle AJAX request for loading states dynamically
+     */
+    public function get_states_for_country() {
+        if (isset($_POST['country'])) {
+            $country = sanitize_text_field($_POST['country']);
+            $states = WC()->countries->get_states($country);
+
+            if (!empty($states)) {
+                wp_send_json($states);
+            } else {
+                wp_send_json([]);
+            }
+        }
+        wp_die();
+    }
 }
 
 // Initialize the plugin
 new Multistep_Checkout();
-
