@@ -18,10 +18,10 @@ class Multistep_Checkout {
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
         // Force order status to Pending after checkout
-        //add_action('woocommerce_checkout_create_order', [$this, 'set_order_to_pending'], 10, 2);
+        add_action('woocommerce_checkout_create_order', [$this, 'set_order_to_pending'], 10, 2);
 
         // Prevent automatic status change to Processing
-        add_filter('woocommerce_payment_complete_order_status', [$this, 'prevent_status_change'], 10, 3);
+        //add_filter('woocommerce_payment_complete_order_status', [$this, 'prevent_status_change'], 10, 3);
 
         // Redirect to order-pay page after checkout
         add_action('woocommerce_thankyou', [$this, 'redirect_to_order_pay'], 10);
