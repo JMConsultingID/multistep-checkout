@@ -24,7 +24,7 @@ class Multistep_Checkout {
         add_action('woocommerce_thankyou', [$this, 'redirect_after_checkout'], 10);
 
         // Ensure completed orders remain completed
-        //add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
+        add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
     }
 
     /**
@@ -83,7 +83,6 @@ class Multistep_Checkout {
     public function ensure_completed_orders_remain_completed($status, $order_id, $order) {
         // Only adjust orders that are not already completed
         if ($order->get_status() === 'pending') {
-            $order->add_order_note(__('Order Created 2', 'multistep-checkout'));
             return 'pending'; // Keep pending for unpaid orders
         }
         return $status; // Return default status for other cases
