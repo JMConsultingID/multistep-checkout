@@ -17,11 +17,6 @@ class Multistep_Checkout {
         // Disable payment options on checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
-        // Customize billing fields
-        add_filter('woocommerce_checkout_fields', [$this, 'customize_billing_fields'], 15);
-
-        add_action('wp_enqueue_scripts', [$this, 'enable_country_state_scripts'], 20);
-
         // Set order status based on total at checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_order_status_based_on_total'], 10, 3);
 
@@ -30,104 +25,11 @@ class Multistep_Checkout {
 
         // Ensure completed orders remain completed
         add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
-
-        // Enqueue inline CSS for checkout fields
-        add_action('wp_head', [$this, 'add_inline_css']);
+        
+        // Customize checkout fields layout
+        add_filter('woocommerce_checkout_fields', [$this, 'custom_checkout_fields_layout']);
+        add_filter('woocommerce_form_field_args', [$this, 'custom_checkout_field_args'], 10, 3);
     }
-
-    /**
-     * Customize billing fields on the checkout page.
-     *
-     * @param array $fields
-     * @return array
-     */
-    public function customize_billing_fields($fields) {
-        // Unset semua field default
-        $fields['billing'] = [];
-
-        // Tambahkan kembali field billing dengan class yang sesuai
-        $fields['billing']['billing_first_name'] = [
-            'type'        => 'text',
-            'label'       => __('First Name', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-first'],
-            'placeholder' => __('Enter your first name', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_last_name'] = [
-            'type'        => 'text',
-            'label'       => __('Last Name', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-last'],
-            'placeholder' => __('Enter your last name', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_country'] = [
-            'type'        => 'country',
-            'label'       => __('Country', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-first', 'address-field', 'update_totals_on_change'],
-        ];
-
-        $fields['billing']['billing_state'] = [
-            'type'        => 'state',
-            'label'       => __('State/Region', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-last', 'address-field'],
-            'placeholder' => __('Select your state/region', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_address_1'] = [
-            'type'        => 'text',
-            'label'       => __('Address', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-wide'],
-            'placeholder' => __('Enter your address', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_city'] = [
-            'type'        => 'text',
-            'label'       => __('City', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-first'],
-            'placeholder' => __('Enter your city', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_postcode'] = [
-            'type'        => 'text',
-            'label'       => __('Postal Code', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-last'],
-            'placeholder' => __('Enter your postal code', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_email'] = [
-            'type'        => 'email',
-            'label'       => __('Email', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-first'],
-            'placeholder' => __('Enter your email address', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_phone'] = [
-            'type'        => 'tel',
-            'label'       => __('Phone Number', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-last'],
-            'placeholder' => __('Enter your phone number', 'multistep-checkout'),
-        ];
-
-        return $fields;
-    }
-
-    public function enable_country_state_scripts() {
-        if (is_checkout()) {
-            wp_enqueue_script('wc-country-select');
-            wp_enqueue_script('wc-address-i18n');
-        }
-    }
-
-
     /**
      * Set order status based on total at checkout
      *
@@ -189,35 +91,93 @@ class Multistep_Checkout {
         return $status; // Return default status for other cases
     }
 
-    /**
-     * Add inline CSS for checkout fields
+     /**
+     * Customize checkout fields layout
+     *
+     * @param array $fields
+     * @return array
      */
-    public function add_inline_css() {
-        if (is_checkout()) {
-            echo '<style>
-                .woocommerce-billing-fields .form-row {
-                    margin-bottom: 15px;
-                    clear: both;
-                }
-                .woocommerce-billing-fields .form-row-first {
-                    width: 48%;
-                    float: left;
-                    margin-right: 4%;
-                }
-                .woocommerce-billing-fields .form-row-last {
-                    width: 48%;
-                    float: right;
-                }
-                .woocommerce-billing-fields .form-row-wide {
-                    width: 100%;
-                    float: none;
-                    clear: both;
-                }
-            </style>';
+    public function custom_checkout_fields_layout($fields) {
+        foreach ($fields['billing'] as $key => $field) {
+            $fields['billing'][$key]['class'] = ['form-group', 'custom-billing-field']; // Add custom classes
+            if (in_array($key, ['billing_first_name', 'billing_last_name'])) {
+                $fields['billing'][$key]['class'][] = 'form-row-half'; // Half-width for first name and last name
+            }
         }
+        return $fields;
     }
 
+    /**
+     * Customize checkout field arguments
+     *
+     * @param array $args
+     * @param string $key
+     * @param mixed $value
+     * @return array
+     */
+    public function custom_checkout_field_args($args, $key, $value) {
+        if (in_array($key, ['billing_country', 'billing_state'])) {
+            $args['class'][] = 'form-row-half'; // Half-width for dropdowns
+        }
+        return $args;
+    }
 }
 
 // Initialize the plugin
 new Multistep_Checkout();
+
+/* Inline CSS */
+function multistep_checkout_inline_styles() {
+    echo '<style>
+        .woocommerce-billing-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .custom-billing-field {
+            width: 100%;
+            position: relative;
+        }
+
+        .custom-billing-field.form-row-half {
+            width: calc(50% - 10px);
+        }
+
+        .woocommerce-billing-fields input,
+        .woocommerce-billing-fields select {
+            width: 100%;
+            padding: 10px 15px;
+            font-size: 16px;
+            border: 1px solid #444;
+            background: #1a1a1a;
+            color: #fff;
+            border-radius: 5px;
+        }
+
+        .woocommerce-billing-fields label {
+            font-size: 14px;
+            color: #ddd;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .woocommerce-billing-fields select {
+            background-color: #222;
+        }
+
+        body.woocommerce-checkout {
+            background: #121212;
+            color: #fff;
+        }
+
+        body.woocommerce-checkout input::placeholder {
+            color: #aaa;
+        }
+    </style>';
+}
+add_action('wp_head', 'multistep_checkout_inline_styles');
