@@ -18,7 +18,9 @@ class Multistep_Checkout {
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
         // Customize billing fields
-        add_filter('woocommerce_checkout_fields', [$this, 'customize_billing_fields']);
+        add_filter('woocommerce_checkout_fields', [$this, 'customize_billing_fields'], 15);
+
+        add_action('wp_enqueue_scripts', [$this, 'disable_country_state_scripts'], 20);
 
         // Set order status based on total at checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_order_status_based_on_total'], 10, 3);
@@ -29,14 +31,8 @@ class Multistep_Checkout {
         // Ensure completed orders remain completed
         add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
 
-        // Validate custom fields
-        add_action('woocommerce_checkout_process', [$this, 'validate_billing_fields']);
-
-        // Save custom fields to order metadata
-        add_action('woocommerce_checkout_update_order_meta', [$this, 'save_custom_fields']);
-
-        // Display custom fields in admin order page
-        add_action('woocommerce_admin_order_data_after_billing_address', [$this, 'display_custom_fields_in_admin']);
+        // Enqueue inline CSS for checkout fields
+        add_action('wp_head', [$this, 'add_inline_css']);
     }
 
     /**
@@ -46,10 +42,10 @@ class Multistep_Checkout {
      * @return array
      */
     public function customize_billing_fields($fields) {
-        // Unset all default billing fields
+        // Reset semua field default
         unset($fields['billing']);
 
-        // Add custom billing fields
+        // Tambahkan field yang baru
         $fields['billing'] = [
             'billing_first_name' => [
                 'type'        => 'text',
@@ -87,34 +83,40 @@ class Multistep_Checkout {
                 'placeholder' => __('Enter your address', 'multistep-checkout'),
             ],
             'billing_country' => [
-                'type'        => 'country',
+                'type'        => 'select',
                 'label'       => __('Country', 'multistep-checkout'),
                 'required'    => true,
-                'class'       => ['form-row-first', 'address-field'],
-            ],
-            'billing_state' => [
-                'type'        => 'state',
-                'label'       => __('State/Region', 'multistep-checkout'),
-                'required'    => true,
-                'class'       => ['form-row-last', 'address-field'],
+                'class'       => ['form-row-first'],
+                'options'     => [
+                    ''     => __('Select a country', 'multistep-checkout'),
+                    'US'   => __('United States', 'multistep-checkout'),
+                    'ID'   => __('Indonesia', 'multistep-checkout'),
+                ],
             ],
             'billing_city' => [
                 'type'        => 'text',
                 'label'       => __('City', 'multistep-checkout'),
                 'required'    => true,
-                'class'       => ['form-row-first'],
+                'class'       => ['form-row-last'],
                 'placeholder' => __('Enter your city', 'multistep-checkout'),
             ],
             'billing_postcode' => [
                 'type'        => 'text',
                 'label'       => __('Postal Code', 'multistep-checkout'),
                 'required'    => true,
-                'class'       => ['form-row-last'],
+                'class'       => ['form-row-wide'],
                 'placeholder' => __('Enter your postal code', 'multistep-checkout'),
             ],
         ];
 
         return $fields;
+    }
+
+    public function disable_country_state_scripts() {
+        if (is_checkout()) {
+            wp_dequeue_script('wc-country-select');
+            wp_dequeue_script('wc-address-i18n');
+        }
     }
 
 
@@ -180,41 +182,25 @@ class Multistep_Checkout {
     }
 
     /**
-     * Validate custom fields on the checkout page
+     * Add inline CSS for checkout fields
      */
-    public function validate_billing_fields() {
-        if (empty($_POST['billing_first_name'])) {
-            wc_add_notice(__('First name is required.', 'multistep-checkout'), 'error');
+    public function add_inline_css() {
+        if (is_checkout()) {
+            echo '<style>
+                .woocommerce-billing-fields .form-row {
+                    margin-bottom: 15px;
+                }
+                .woocommerce-billing-fields .form-row-first,
+                .woocommerce-billing-fields .form-row-last {
+                    width: 48%;
+                    display: inline-block;
+                }
+                .woocommerce-billing-fields .form-row-wide {
+                    width: 100%;
+                    display: block;
+                }
+            </style>';
         }
-
-        if (empty($_POST['billing_email'])) {
-            wc_add_notice(__('Email is required.', 'multistep-checkout'), 'error');
-        }
-    }
-
-    /**
-     * Save custom fields to order metadata
-     *
-     * @param int $order_id
-     */
-    public function save_custom_fields($order_id) {
-        if (!empty($_POST['billing_first_name'])) {
-            update_post_meta($order_id, '_billing_first_name', sanitize_text_field($_POST['billing_first_name']));
-        }
-
-        if (!empty($_POST['billing_email'])) {
-            update_post_meta($order_id, '_billing_email', sanitize_email($_POST['billing_email']));
-        }
-    }
-
-    /**
-     * Display custom fields in the admin order page
-     *
-     * @param WC_Order $order
-     */
-    public function display_custom_fields_in_admin($order) {
-        echo '<p><strong>' . __('First Name', 'multistep-checkout') . ':</strong> ' . esc_html(get_post_meta($order->get_id(), '_billing_first_name', true)) . '</p>';
-        echo '<p><strong>' . __('Email', 'multistep-checkout') . ':</strong> ' . esc_html(get_post_meta($order->get_id(), '_billing_email', true)) . '</p>';
     }
 }
 
