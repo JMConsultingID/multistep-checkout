@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Custom Checkout Flow
  * Description: Custom WooCommerce checkout flow: checkout -> order-pay -> thank you.
- * Version: 1.2
+ * Version: 1.3
  * Author: [Your Name]
  */
 
@@ -13,17 +13,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Disable payment options on checkout page
 add_filter( 'woocommerce_cart_needs_payment', '__return_false' );
 
-// Set order status to pending after checkout
+// Force order status to Pending after checkout
 add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
     $order->set_status( 'pending' ); // Ensure the order is set to pending
 }, 10, 2 );
 
+// Prevent automatic status change to Processing
+add_filter( 'woocommerce_payment_complete_order_status', function( $status, $order_id, $order ) {
+    return 'pending'; // Ensure status stays pending
+}, 10, 3 );
+
 // Redirect to order-pay page after checkout
 add_action( 'woocommerce_thankyou', function( $order_id ) {
-    if ( ! $order_id ) {
-        return;
-    }
-
     $order = wc_get_order( $order_id );
     if ( $order && $order->get_status() === 'pending' ) {
         // Redirect to order-pay page
@@ -32,10 +33,10 @@ add_action( 'woocommerce_thankyou', function( $order_id ) {
     }
 }, 10 );
 
-// Disable automatic status change to processing for certain payment methods
-add_filter( 'woocommerce_payment_complete_order_status', function( $status, $order_id, $order ) {
-    if ( $order->get_payment_method() === 'cod' ) { // Replace 'cod' with your method if needed
-        return 'pending'; // Ensure status stays pending
+// Set default payment gateways to avoid auto-processing
+add_filter( 'woocommerce_available_payment_gateways', function( $available_gateways ) {
+    if ( is_checkout() ) {
+        $available_gateways = []; // Disable all payment gateways on checkout page
     }
-    return $status;
-}, 10, 3 );
+    return $available_gateways;
+});
