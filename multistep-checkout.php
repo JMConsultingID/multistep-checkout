@@ -24,7 +24,7 @@ class Multistep_Checkout {
         add_action('woocommerce_thankyou', [$this, 'redirect_after_checkout'], 10);
 
         // Ensure completed orders remain completed
-        add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
+        //add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
     }
 
     /**
