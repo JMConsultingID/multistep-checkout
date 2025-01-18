@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Multistep Checkout
  * Description: A plugin to implement a multi-step checkout process in WooCommerce.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: Your Name
  * Text Domain: multistep-checkout
  */
@@ -20,15 +20,15 @@ class Multistep_Checkout {
         // Set default payment method and update order during checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_default_payment_method']);
 
-        // Redirect to the order-pay page after thank you page
-        add_action('woocommerce_thankyou', [$this, 'redirect_to_order_pay']);
-
         // Ensure the order status is set to pending before processing payment
-        add_action('woocommerce_checkout_order_processed', [$this, 'ensure_pending_status'], 10, 1);
+        add_action('woocommerce_payment_complete_order_status', [$this, 'force_pending_status'], 10, 3);
 
         // Debugging and error logging
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
         add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
+
+        // Log status changes
+        add_action('woocommerce_order_status_changed', [$this, 'log_status_change'], 10, 3);
     }
 
     /**
@@ -48,55 +48,42 @@ class Multistep_Checkout {
         if (!$order->get_payment_method()) {
             $order->set_payment_method('bacs'); // Example payment method
             $order->set_payment_method_title(__('Bank Transfer', 'multistep-checkout'));
-            $order->add_order_note(__('Default payment method.', 'multistep-checkout'));
             $order->save();
             error_log('Default payment method set for Order ID: ' . $order_id);
-        }
-    }
-
-    /**
-     * Ensure the order status is set to pending
-     *
-     * @param int $order_id
-     */
-    public function ensure_pending_status($order_id) {
-        $order = wc_get_order($order_id);
-
-        if (!$order) {
-            error_log('Order not found for Order ID: ' . $order_id);
-            return;
         }
 
         // Update order status to pending if not already set
         if ($order->get_status() !== 'pending') {
-            $order->update_status('pending', __('Order created and waiting for payment.', 'multistep-checkout'));
+            $order->update_status('pending', __('Order set to pending.', 'multistep-checkout'));
             error_log('Order status updated to pending for Order ID: ' . $order_id);
         }
     }
 
     /**
-     * Redirect to the order-pay page from thank you page
+     * Force order status to pending if completed automatically
+     *
+     * @param string $status
+     * @param int $order_id
+     * @param WC_Order $order
+     * @return string
+     */
+    public function force_pending_status($status, $order_id, $order) {
+        if ($order->get_status() !== 'pending') {
+            error_log('Order ID ' . $order_id . ' status overridden to pending.');
+            return 'pending';
+        }
+        return $status;
+    }
+
+    /**
+     * Log order status changes
      *
      * @param int $order_id
+     * @param string $old_status
+     * @param string $new_status
      */
-    public function redirect_to_order_pay($order_id) {
-        $order = wc_get_order($order_id);
-
-        if (!$order) {
-            error_log('Order not found for Order ID: ' . $order_id);
-            return;
-        }
-
-        // Build the redirect URL
-        $redirect_url = add_query_arg(
-            ['pay_for_order' => 'true', 'key' => $order->get_order_key()],
-            $order->get_checkout_payment_url()
-        );
-
-        error_log('Redirecting user to: ' . $redirect_url);
-
-        wp_redirect($redirect_url);
-        exit;
+    public function log_status_change($order_id, $old_status, $new_status) {
+        error_log('Order ID ' . $order_id . ' status changed from ' . $old_status . ' to ' . $new_status);
     }
 
     /**
