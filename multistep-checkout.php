@@ -40,10 +40,10 @@ class Multistep_Checkout {
      * @return array
      */
     public function customize_billing_fields($fields) {
-        // Reset semua field default
-        unset($fields['billing']);
+        // Unset all default billing fields
+        $fields['billing'] = [];
 
-        // Tambahkan field yang baru
+        // Add custom billing fields
         $fields['billing'] = [
             'billing_first_name' => [
                 'type'        => 'text',
@@ -102,21 +102,13 @@ class Multistep_Checkout {
                 'type'        => 'text',
                 'label'       => __('Postal Code', 'multistep-checkout'),
                 'required'    => true,
-                'class'       => ['form-row-wide'],
+                'class'       => ['form-row-first'],
                 'placeholder' => __('Enter your postal code', 'multistep-checkout'),
             ],
         ];
 
         return $fields;
     }
-
-    public function disable_country_state_scripts() {
-        if (is_checkout()) {
-            wp_dequeue_script('wc-country-select');
-            wp_dequeue_script('wc-address-i18n');
-        }
-    }
-
 
     /**
      * Set order status based on total at checkout
