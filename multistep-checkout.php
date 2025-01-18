@@ -18,7 +18,7 @@ class Multistep_Checkout {
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
         // Set default payment method and redirect to order pay page after order creation
-        add_action('woocommerce_checkout_order_processed', [$this, 'process_order_and_redirect']);
+        add_action('woocommerce_checkout_order_created', [$this, 'process_order_and_redirect']);
 
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
         add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
@@ -51,7 +51,8 @@ class Multistep_Checkout {
 
         // Update order status to pending
         if ($order->get_status() !== 'pending') {
-            $order->update_status('pending', __('Order created and waiting for payment.', 'multistep-checkout'));
+            $order->update_status('pending');
+            error_log('Update Status Pending Order ID: ' . $order->get_id());
         }
 
         // Redirect to the order pay page
