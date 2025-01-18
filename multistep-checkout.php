@@ -25,11 +25,8 @@ class Multistep_Checkout {
 
         // Ensure completed orders remain completed
         add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
-        
-        // Customize checkout fields layout
-        add_filter('woocommerce_checkout_fields', [$this, 'custom_checkout_fields_layout']);
-        add_filter('woocommerce_form_field_args', [$this, 'custom_checkout_field_args'], 10, 3);
     }
+
     /**
      * Set order status based on total at checkout
      *
@@ -89,37 +86,6 @@ class Multistep_Checkout {
             return 'pending'; // Keep pending for unpaid orders
         }
         return $status; // Return default status for other cases
-    }
-
-     /**
-     * Customize checkout fields layout
-     *
-     * @param array $fields
-     * @return array
-     */
-    public function custom_checkout_fields_layout($fields) {
-        foreach ($fields['billing'] as $key => $field) {
-            $fields['billing'][$key]['class'] = ['form-group', 'custom-billing-field']; // Add custom classes
-            if (in_array($key, ['billing_first_name', 'billing_last_name'])) {
-                $fields['billing'][$key]['class'][] = 'form-row-half'; // Half-width for first name and last name
-            }
-        }
-        return $fields;
-    }
-
-    /**
-     * Customize checkout field arguments
-     *
-     * @param array $args
-     * @param string $key
-     * @param mixed $value
-     * @return array
-     */
-    public function custom_checkout_field_args($args, $key, $value) {
-        if (in_array($key, ['billing_country', 'billing_state'])) {
-            $args['class'][] = 'form-row-half'; // Half-width for dropdowns
-        }
-        return $args;
     }
 }
 
