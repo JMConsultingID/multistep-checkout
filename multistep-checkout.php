@@ -18,7 +18,9 @@ class Multistep_Checkout {
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
         // Set default payment method and redirect to order pay page after order creation
-        add_action('woocommerce_checkout_order_processed', [$this, 'process_order_and_redirect']);
+        //add_action('woocommerce_checkout_order_processed', [$this, 'process_order_and_redirect']);
+        add_action('woocommerce_checkout_order_created', [$this, 'process_order_and_redirect']);
+
 
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
         add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
@@ -31,30 +33,24 @@ class Multistep_Checkout {
      * @param WC_Order $order
      */
     public function process_order_and_redirect($order_id) {
-        $order = wc_get_order($order_id);
-        $payment_method = ''; // Use a valid payment method ID as a placeholder
-        
+    $order = wc_get_order($order_id);
 
-        if (!$order) {
-            error_log('Order not found for Order ID: ' . $order_id);
-            return;
-        }
+    if (!$order) {
+        error_log('Order not found for Order ID: ' . $order_id);
+        return;
+    }
 
-        // Set default payment method
-        if (!$order->get_payment_method()) {
-            $order->set_payment_method($payment_method);
-            $order->set_payment_method_title(''); 
-            $order->add_order_note(__('Default payment method.', 'multistep-checkout'));
-            $order->save();
-            error_log('Default payment method set for Order ID: ' . $order->get_id());
-        }
+    // Pastikan metode pembayaran sudah diset
+    if (!$order->get_payment_method()) {
+        $order->set_payment_method('bacs'); // Ganti 'bacs' dengan metode pembayaran valid
+        $order->set_payment_method_title(__('Bank Transfer', 'multistep-checkout'));
+        $order->add_order_note(__('Default payment method set to Bank Transfer.', 'multistep-checkout'));
+        $order->save();
+        error_log('Default payment method set for Order ID: ' . $order_id);
+    }
 
-        // Update order status to pending
-        if ($order->get_status() !== 'pending') {
-            $order->update_status('pending', __('Order created and waiting for payment.', 'multistep-checkout'));
-        }
-
-        // Redirect to the order pay page
+    // Hanya redirect jika status belum completed
+    if ($order->get_status() !== 'completed') {
         $redirect_url = add_query_arg(
             ['pay_for_order' => 'true', 'key' => $order->get_order_key()],
             $order->get_checkout_payment_url()
@@ -62,9 +58,12 @@ class Multistep_Checkout {
 
         error_log('Redirecting user to: ' . $redirect_url);
 
-        // wp_redirect($redirect_url);
-        // exit;
+        // Redirect ke halaman pembayaran
+        wp_redirect($redirect_url);
+        exit;
     }
+}
+
 
 
     public function debug_checkout_data() {
