@@ -32,7 +32,7 @@ class Multistep_Checkout {
      */
     public function process_order_and_redirect($order_id) {
         $order = wc_get_order($order_id);
-        $payment_method = ''; // Use a valid payment method ID as a placeholder
+        $payment_method = 'bacs'; // Use a valid payment method ID as a placeholder
         
 
         if (!$order) {
@@ -49,10 +49,6 @@ class Multistep_Checkout {
             error_log('Default payment method set for Order ID: ' . $order->get_id());
         }
 
-        $order->update_status('pending');
-        error_log('Update Status Pending Order ID: ' . $order->get_id());
-        
-
         // Redirect to the order pay page
         $redirect_url = add_query_arg(
             ['pay_for_order' => 'true', 'key' => $order->get_order_key()],
@@ -61,8 +57,7 @@ class Multistep_Checkout {
 
         error_log('Redirecting user to: ' . $redirect_url);
 
-        // wp_redirect($redirect_url);
-        // exit;
+        wp_redirect($redirect_url);
     }
 
 
