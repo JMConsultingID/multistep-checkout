@@ -19,7 +19,9 @@ class Multistep_Checkout {
 
         // Set default payment method and redirect to order pay page after order creation
         //add_action('woocommerce_checkout_order_processed', [$this, 'process_order_and_redirect']);
-        add_action('woocommerce_checkout_order_created', [$this, 'process_order_and_redirect']);
+        //add_action('woocommerce_checkout_order_created', [$this, 'process_order_and_redirect']);
+
+        add_action('woocommerce_thankyou', [$this, 'process_order_and_redirect']);
 
 
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
