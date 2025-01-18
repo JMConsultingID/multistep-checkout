@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Custom Checkout Flow
  * Description: Custom WooCommerce checkout flow: checkout -> order-pay -> thank you.
- * Version: 1.1
+ * Version: 1.2
  * Author: [Your Name]
  */
 
@@ -13,7 +13,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Disable payment options on checkout page
 add_filter( 'woocommerce_cart_needs_payment', '__return_false' );
 
-// Redirect to order-pay after checkout
+// Set order status to pending after checkout
+add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
+    $order->set_status( 'pending' ); // Ensure the order is set to pending
+}, 10, 2 );
+
+// Redirect to order-pay page after checkout
 add_action( 'woocommerce_thankyou', function( $order_id ) {
     if ( ! $order_id ) {
         return;
@@ -27,7 +32,10 @@ add_action( 'woocommerce_thankyou', function( $order_id ) {
     }
 }, 10 );
 
-// Ensure orders are set to Pending status
-add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
-    $order->set_status( 'pending' ); // Set the status to Pending
-}, 10, 2 );
+// Disable automatic status change to processing for certain payment methods
+add_filter( 'woocommerce_payment_complete_order_status', function( $status, $order_id, $order ) {
+    if ( $order->get_payment_method() === 'cod' ) { // Replace 'cod' with your method if needed
+        return 'pending'; // Ensure status stays pending
+    }
+    return $status;
+}, 10, 3 );
