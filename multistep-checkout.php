@@ -31,14 +31,11 @@ class Multistep_Checkout {
 
         // Enqueue inline CSS for checkout fields
         add_action('wp_head', [$this, 'add_inline_css']);
+
+        // Ensure country and state scripts are loaded
+        add_action('wp_enqueue_scripts', [$this, 'enable_country_state_scripts'], 20);
     }
 
-    /**
-     * Customize billing fields on the checkout page.
-     *
-     * @param array $fields
-     * @return array
-     */
     public function customize_billing_fields($fields) {
         // Unset all default billing fields
         $fields['billing'] = [];
@@ -81,15 +78,10 @@ class Multistep_Checkout {
                 'placeholder' => __('Enter your address', 'multistep-checkout'),
             ],
             'billing_country' => [
-                'type'        => 'select',
+                'type'        => 'country',
                 'label'       => __('Country', 'multistep-checkout'),
                 'required'    => true,
                 'class'       => ['form-row-first'],
-                'options'     => [
-                    ''     => __('Select a country', 'multistep-checkout'),
-                    'US'   => __('United States', 'multistep-checkout'),
-                    'ID'   => __('Indonesia', 'multistep-checkout'),
-                ],
             ],
             'billing_city' => [
                 'type'        => 'text',
@@ -102,7 +94,7 @@ class Multistep_Checkout {
                 'type'        => 'text',
                 'label'       => __('Postal Code', 'multistep-checkout'),
                 'required'    => true,
-                'class'       => ['form-row-first'],
+                'class'       => ['form-row-wide'],
                 'placeholder' => __('Enter your postal code', 'multistep-checkout'),
             ],
         ];
@@ -110,44 +102,23 @@ class Multistep_Checkout {
         return $fields;
     }
 
-    /**
-     * Set order status based on total at checkout
-     *
-     * @param int $order_id
-     * @param array $posted_data
-     * @param WC_Order $order
-     */
     public function set_order_status_based_on_total($order_id, $posted_data, $order) {
         if ($order->get_total() == 0) {
-            // If order total is 0, set status to completed
             $order->update_status('completed');
         } else {
-            // If order total > 0, set status to pending
-            $order->add_order_note( sprintf( __( 'Order Created. Order ID: #%d', 'multistep-checkout' ), $order->get_id() ) );
+            $order->add_order_note(sprintf(__('Order Created. Order ID: #%d', 'multistep-checkout'), $order->get_id()));
             $order->update_status('pending');
         }
-        error_log('Order ID ' . $order_id . ' status updated based on total: ' . $order->get_total());
     }
 
-    /**
-     * Redirect to appropriate page after checkout
-     *
-     * @param int $order_id
-     */
     public function redirect_after_checkout($order_id) {
-        if (!$order_id) {
-            return;
-        }
+        if (!$order_id) return;
 
         $order = wc_get_order($order_id);
 
-        if ($order->get_total() == 0) {
-            // If order total is 0, let WooCommerce handle the flow to Thank You page
-            return;
-        }
+        if ($order->get_total() == 0) return;
 
         if ($order->get_status() === 'pending') {
-            // Redirect unpaid orders to order-pay page
             $redirect_url = $order->get_checkout_payment_url();
             $order->add_order_note(__('Redirecting to order-pay page', 'multistep-checkout'));
             wp_safe_redirect($redirect_url);
@@ -155,25 +126,13 @@ class Multistep_Checkout {
         }
     }
 
-    /**
-     * Ensure completed orders remain completed
-     *
-     * @param string $status
-     * @param int $order_id
-     * @param WC_Order $order
-     * @return string
-     */
     public function ensure_completed_orders_remain_completed($status, $order_id, $order) {
-        // Only adjust orders that are not already completed
         if ($order->get_status() === 'pending') {
-            return 'pending'; // Keep pending for unpaid orders
+            return 'pending';
         }
-        return $status; // Return default status for other cases
+        return $status;
     }
 
-    /**
-     * Add inline CSS for checkout fields
-     */
     public function add_inline_css() {
         if (is_checkout()) {
             echo '<style>
@@ -192,7 +151,13 @@ class Multistep_Checkout {
             </style>';
         }
     }
+
+    public function enable_country_state_scripts() {
+        if (is_checkout()) {
+            wp_enqueue_script('wc-country-select');
+            wp_enqueue_script('wc-address-i18n');
+        }
+    }
 }
 
-// Initialize the plugin
 new Multistep_Checkout();
