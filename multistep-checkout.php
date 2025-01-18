@@ -42,7 +42,10 @@ class Multistep_Checkout {
      * @return array
      */
     public function customize_billing_fields($fields) {
-        // Reset hanya field yang diperlukan
+        // Unset semua field default
+        $fields['billing'] = [];
+
+        // Tambahkan kembali field billing dengan class yang sesuai
         $fields['billing']['billing_first_name'] = [
             'type'        => 'text',
             'label'       => __('First Name', 'multistep-checkout'),
@@ -57,30 +60,6 @@ class Multistep_Checkout {
             'required'    => true,
             'class'       => ['form-row-last'],
             'placeholder' => __('Enter your last name', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_email'] = [
-            'type'        => 'email',
-            'label'       => __('Email', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-first'],
-            'placeholder' => __('Enter your email address', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_phone'] = [
-            'type'        => 'tel',
-            'label'       => __('Phone Number', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-last'],
-            'placeholder' => __('Enter your phone number', 'multistep-checkout'),
-        ];
-
-        $fields['billing']['billing_address_1'] = [
-            'type'        => 'text',
-            'label'       => __('Address', 'multistep-checkout'),
-            'required'    => true,
-            'class'       => ['form-row-wide'],
-            'placeholder' => __('Enter your address', 'multistep-checkout'),
         ];
 
         $fields['billing']['billing_country'] = [
@@ -98,6 +77,14 @@ class Multistep_Checkout {
             'placeholder' => __('Select your state/region', 'multistep-checkout'),
         ];
 
+        $fields['billing']['billing_address_1'] = [
+            'type'        => 'text',
+            'label'       => __('Address', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-wide'],
+            'placeholder' => __('Enter your address', 'multistep-checkout'),
+        ];
+
         $fields['billing']['billing_city'] = [
             'type'        => 'text',
             'label'       => __('City', 'multistep-checkout'),
@@ -112,6 +99,22 @@ class Multistep_Checkout {
             'required'    => true,
             'class'       => ['form-row-last'],
             'placeholder' => __('Enter your postal code', 'multistep-checkout'),
+        ];
+
+        $fields['billing']['billing_email'] = [
+            'type'        => 'email',
+            'label'       => __('Email', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-first'],
+            'placeholder' => __('Enter your email address', 'multistep-checkout'),
+        ];
+
+        $fields['billing']['billing_phone'] = [
+            'type'        => 'tel',
+            'label'       => __('Phone Number', 'multistep-checkout'),
+            'required'    => true,
+            'class'       => ['form-row-last'],
+            'placeholder' => __('Enter your phone number', 'multistep-checkout'),
         ];
 
         return $fields;
@@ -194,19 +197,26 @@ class Multistep_Checkout {
             echo '<style>
                 .woocommerce-billing-fields .form-row {
                     margin-bottom: 15px;
+                    clear: both;
                 }
-                .woocommerce-billing-fields .form-row-first,
+                .woocommerce-billing-fields .form-row-first {
+                    width: 48%;
+                    float: left;
+                    margin-right: 4%;
+                }
                 .woocommerce-billing-fields .form-row-last {
                     width: 48%;
-                    display: inline-block;
+                    float: right;
                 }
                 .woocommerce-billing-fields .form-row-wide {
                     width: 100%;
-                    display: block;
+                    float: none;
+                    clear: both;
                 }
             </style>';
         }
     }
+
 }
 
 // Initialize the plugin
