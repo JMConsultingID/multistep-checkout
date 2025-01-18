@@ -21,7 +21,7 @@ class Multistep_Checkout {
         //add_action('woocommerce_checkout_order_processed', [$this, 'process_order_and_redirect']);
         //add_action('woocommerce_checkout_order_created', [$this, 'process_order_and_redirect']);
 
-        add_action('woocommerce_thankyou', [$this, 'process_order_and_redirect']);
+        add_action('woocommerce_thankyou', [$this, 'process_order_and_redirect'],10,1);
 
 
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
