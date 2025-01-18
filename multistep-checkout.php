@@ -24,7 +24,7 @@ class Multistep_Checkout {
         add_action('woocommerce_thankyou', [$this, 'redirect_to_order_pay']);
 
         // Ensure the order status is set to pending before processing payment
-        add_action('woocommerce_checkout_order_processed', [$this, 'ensure_pending_status'], 10, 1);wp_safe_redirect
+        add_action('woocommerce_checkout_order_processed', [$this, 'ensure_pending_status'], 10, 1);
 
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
         add_action('woocommerce_checkout_process', [$this, 'log_checkout_errors'], 1);
