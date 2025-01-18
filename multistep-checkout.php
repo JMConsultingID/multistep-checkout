@@ -37,11 +37,11 @@ class Multistep_Checkout {
     public function set_order_status_based_on_total($order_id, $posted_data, $order) {
         if ($order->get_total() == 0) {
             // If order total is 0, set status to completed
-            $order->update_status('completed', __('Order automatically completed for zero total.', 'multistep-checkout'));
+            $order->update_status('completed');
         } else {
             // If order total > 0, set status to pending
-            $order->add_order_note(__('Order Created', 'multistep-checkout'));
-            $order->update_status('pending', __('Awaiting payment for non-zero total order.', 'multistep-checkout'));
+            $order->add_order_note( sprintf( __( 'Order Created. Order ID: #%d', 'multistep-checkout' ), $order->get_id() ) );
+            $order->update_status('pending');
         }
         error_log('Order ID ' . $order_id . ' status updated based on total: ' . $order->get_total());
     }
