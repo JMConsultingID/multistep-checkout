@@ -17,6 +17,9 @@ class Multistep_Checkout {
         // Disable payment options on checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
+        // Modify billing fields
+        add_filter('woocommerce_checkout_fields', [$this, 'customize_billing_fields']);
+        
         // Set order status based on total at checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_order_status_based_on_total'], 10, 3);
 
@@ -28,6 +31,90 @@ class Multistep_Checkout {
     }
 
     /**
+     * Unset and add custom billing fields
+     *
+     * @param array $fields
+     * @return array
+     */
+    public function customize_billing_fields($fields) {
+        // Unset default billing fields
+        unset($fields['billing']['billing_company']);
+        unset($fields['billing']['billing_address_2']);
+        unset($fields['billing']['billing_postcode']);
+        unset($fields['billing']['billing_state']);
+
+        // Add custom billing fields
+        $fields['billing']['billing_first_name'] = [
+            'label'    => __('First Name', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-first'],
+            'priority' => 10,
+        ];
+
+        $fields['billing']['billing_last_name'] = [
+            'label'    => __('Last Name', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-last'],
+            'priority' => 20,
+        ];
+
+        $fields['billing']['billing_email'] = [
+            'label'    => __('Email', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-first'],
+            'priority' => 30,
+        ];
+
+        $fields['billing']['billing_phone'] = [
+            'label'    => __('Phone Number', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-last'],
+            'priority' => 40,
+        ];
+
+        $fields['billing']['billing_address_1'] = [
+            'label'    => __('Address', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-wide'],
+            'priority' => 50,
+        ];
+
+        $fields['billing']['billing_country'] = [
+            'type'     => 'select',
+            'label'    => __('Country', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-first', 'update_totals_on_change'],
+            'priority' => 60,
+            'options'  => array_merge(['' => __('Select Country', 'multistep-checkout')], WC()->countries->get_allowed_countries()),
+        ];
+
+        $fields['billing']['billing_state'] = [
+            'type'     => 'select',
+            'label'    => __('State/Region', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-last', 'update_totals_on_change'],
+            'priority' => 70,
+            'options'  => ['' => __('Select State', 'multistep-checkout')], // States will be dynamically loaded via JS
+        ];
+
+        $fields['billing']['billing_city'] = [
+            'label'    => __('City', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-first'],
+            'priority' => 80,
+        ];
+
+        $fields['billing']['billing_postcode'] = [
+            'label'    => __('Postal Code', 'multistep-checkout'),
+            'required' => true,
+            'class'    => ['form-row-last'],
+            'priority' => 90,
+        ];
+
+        return $fields;
+    }
+
+    /**
      * Set order status based on total at checkout
      *
      * @param int $order_id
@@ -36,11 +123,9 @@ class Multistep_Checkout {
      */
     public function set_order_status_based_on_total($order_id, $posted_data, $order) {
         if ($order->get_total() == 0) {
-            // If order total is 0, set status to completed
             $order->update_status('completed');
         } else {
-            // If order total > 0, set status to pending
-            $order->add_order_note( sprintf( __( 'Order Created. Order ID: #%d', 'multistep-checkout' ), $order->get_id() ) );
+            $order->add_order_note(sprintf(__('Order Created. Order ID: #%d', 'multistep-checkout'), $order->get_id()));
             $order->update_status('pending');
         }
         error_log('Order ID ' . $order_id . ' status updated based on total: ' . $order->get_total());
@@ -59,12 +144,10 @@ class Multistep_Checkout {
         $order = wc_get_order($order_id);
 
         if ($order->get_total() == 0) {
-            // If order total is 0, let WooCommerce handle the flow to Thank You page
             return;
         }
 
         if ($order->get_status() === 'pending') {
-            // Redirect unpaid orders to order-pay page
             $redirect_url = $order->get_checkout_payment_url();
             $order->add_order_note(__('Redirecting to order-pay page', 'multistep-checkout'));
             wp_safe_redirect($redirect_url);
@@ -81,13 +164,13 @@ class Multistep_Checkout {
      * @return string
      */
     public function ensure_completed_orders_remain_completed($status, $order_id, $order) {
-        // Only adjust orders that are not already completed
         if ($order->get_status() === 'pending') {
-            return 'pending'; // Keep pending for unpaid orders
+            return 'pending';
         }
-        return $status; // Return default status for other cases
+        return $status;
     }
 }
 
 // Initialize the plugin
 new Multistep_Checkout();
+
