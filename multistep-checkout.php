@@ -46,6 +46,10 @@ class Multistep_Checkout {
      * @return array
      */
     public function customize_billing_fields($fields) {
+        // Unset all default billing fields
+        unset($fields['billing']);
+
+        // Add custom billing fields
         $fields['billing'] = [
             'billing_first_name' => [
                 'type'        => 'text',
@@ -112,6 +116,7 @@ class Multistep_Checkout {
 
         return $fields;
     }
+
 
     /**
      * Set order status based on total at checkout
