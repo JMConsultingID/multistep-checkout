@@ -49,7 +49,7 @@ class Multistep_Checkout {
      */
     public function prevent_status_change($status, $order_id, $order) {
         error_log('Prevented status change for Order ID: ' . $order_id . ' - Status remains pending.');
-        $order->add_order_note(__('Order Created 2', 'multistep-checkout'));
+        $order->add_order_note(__('Order Created', 'multistep-checkout'));
         return 'pending'; // Ensure status stays pending
     }
 
