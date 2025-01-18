@@ -143,32 +143,33 @@ class Multistep_Checkout {
                         var stateField = $("#billing_state");
 
                         if (country) {
-                            stateField.prop("disabled", true).html("<option>Loading...</option>");
+                            stateField.prop("disabled", true).html("<option value=\\\"\\\">Loading...</option>");
 
                             $.ajax({
                                 url: wc_checkout_params.ajax_url,
                                 type: "POST",
                                 data: {
                                     action: "get_states_for_country",
-                                    country: country,
+                                    country: country
                                 },
                                 success: function (response) {
                                     stateField.empty().prop("disabled", false);
-                                    stateField.append("<option value=''>Select State/Region</option>");
+                                    stateField.append("<option value=\\\"\\\">Select State/Region</option>");
 
                                     $.each(response, function (key, value) {
-                                        stateField.append('<option value="' + key + '">' + value + '</option>');
+                                        stateField.append("<option value=\\\"\" + key + \"\\\">" + value + "</option>");
                                     });
                                 },
                                 error: function () {
                                     stateField.empty().prop("disabled", false);
-                                    stateField.append("<option value=''>No states available</option>");
-                                },
+                                    stateField.append("<option value=\\\"\\\">No states available</option>");
+                                }
                             });
                         } else {
-                            stateField.empty().append("<option value=''>Select State/Region</option>");
+                            stateField.empty().append("<option value=\\\"\\\">Select State/Region</option>");
                         }
                     });
+
                 });
             </script>';
         }
