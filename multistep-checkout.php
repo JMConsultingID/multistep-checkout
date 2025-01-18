@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Multistep Checkout
  * Description: A plugin to implement a multi-step checkout process in WooCommerce.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Your Name
  * Text Domain: multistep-checkout
  */
@@ -22,6 +22,9 @@ class Multistep_Checkout {
 
         // Redirect to the order-pay page after thank you page
         add_action('woocommerce_thankyou', [$this, 'redirect_to_order_pay']);
+
+        // Ensure the order status is set to pending before processing payment
+        add_action('woocommerce_checkout_order_processed', [$this, 'ensure_pending_status'], 10, 1);
 
         // Debugging and error logging
         add_action('woocommerce_before_checkout_process', [$this, 'debug_checkout_data']);
@@ -45,8 +48,23 @@ class Multistep_Checkout {
         if (!$order->get_payment_method()) {
             $order->set_payment_method('bacs'); // Example payment method
             $order->set_payment_method_title(__('Bank Transfer', 'multistep-checkout'));
+            $order->add_order_note(__('Default payment method.', 'multistep-checkout'));
             $order->save();
             error_log('Default payment method set for Order ID: ' . $order_id);
+        }
+    }
+
+    /**
+     * Ensure the order status is set to pending
+     *
+     * @param int $order_id
+     */
+    public function ensure_pending_status($order_id) {
+        $order = wc_get_order($order_id);
+
+        if (!$order) {
+            error_log('Order not found for Order ID: ' . $order_id);
+            return;
         }
 
         // Update order status to pending if not already set
