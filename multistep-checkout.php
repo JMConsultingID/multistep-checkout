@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Custom Checkout Flow
- * Description: Custom WooCommerce checkout flow: checkout -> order-pay -> thank you.
- * Version: 1.4
+ * Description: Custom WooCommerce checkout flow: checkout -> order-pay -> thank you, with status adjustments for free orders.
+ * Version: 1.5
  * Author: [Your Name]
  */
 
@@ -13,14 +13,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Disable payment options on checkout page
 add_filter( 'woocommerce_cart_needs_payment', '__return_false' );
 
-// Set order status to pending only for paid orders
+// Set order status based on total
 add_action( 'woocommerce_checkout_create_order', function( $order, $data ) {
-    if ( $order->get_total() > 0 ) {
-        $order->set_status( 'pending' ); // Paid orders start as pending
+    if ( $order->get_total() == 0 ) {
+        // Automatically set free orders to completed
+        $order->set_status( 'completed' );
+    } else {
+        // Set paid orders to pending
+        $order->set_status( 'pending' );
     }
 }, 10, 2 );
 
-// Redirect to appropriate page after checkout
+// Redirect after checkout based on order total
 add_action( 'woocommerce_thankyou', function( $order_id ) {
     if ( ! $order_id ) {
         return;
@@ -29,7 +33,7 @@ add_action( 'woocommerce_thankyou', function( $order_id ) {
     $order = wc_get_order( $order_id );
 
     if ( $order->get_total() == 0 ) {
-        // If order total is 0, let WooCommerce handle the flow to Thank You page
+        // Free orders should go directly to Thank You page
         return;
     }
 
@@ -40,12 +44,11 @@ add_action( 'woocommerce_thankyou', function( $order_id ) {
     }
 }, 10 );
 
-// Ensure completed orders remain completed
+// Ensure payment complete status respects free orders
 add_filter( 'woocommerce_payment_complete_order_status', function( $status, $order_id, $order ) {
-    // Only adjust orders that are not already completed
-    if ( $order->get_status() === 'pending' ) {
-        return 'pending'; // Keep pending for unpaid orders
+    if ( $order->get_total() == 0 ) {
+        // Free orders should always be completed
+        return 'completed';
     }
-
-    return $status; // Return default status for other cases
+    return $status; // Default behavior for paid orders
 }, 10, 3 );
