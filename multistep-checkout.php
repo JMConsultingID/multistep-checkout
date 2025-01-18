@@ -20,8 +20,6 @@ class Multistep_Checkout {
         // Customize billing fields
         add_filter('woocommerce_checkout_fields', [$this, 'customize_billing_fields'], 15);
 
-        add_action('wp_enqueue_scripts', [$this, 'disable_country_state_scripts'], 20);
-
         // Set order status based on total at checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_order_status_based_on_total'], 10, 3);
 
