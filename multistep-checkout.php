@@ -29,6 +29,11 @@ class Multistep_Checkout {
         // Enqueue Bootstrap CSS and JS
         add_action('wp_enqueue_scripts', [$this, 'enqueue_bootstrap']);
 
+        add_filter('woocommerce_checkout_fields', [$this, 'remove_unnecessary_checkout_fields']);
+
+        add_filter('woocommerce_checkout_fields', [$this, 'reorder_checkout_fields']);
+
+
         // Render custom billing form
         add_action('woocommerce_before_checkout_billing_form', [$this, 'render_custom_billing_form']);
     }
@@ -40,6 +45,29 @@ class Multistep_Checkout {
         wp_enqueue_style('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css', [], '5.3.0-alpha3');
         wp_enqueue_script('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js', ['jquery'], '5.3.0-alpha3', true);
     }
+
+    public function remove_unnecessary_checkout_fields($fields) {
+        // Hapus field yang tidak diperlukan
+        unset($fields['billing']['billing_company']); // Hapus field perusahaan
+        unset($fields['billing']['billing_address_2']); // Hapus field alamat tambahan
+        unset($fields['billing']['billing_state']); // Hapus field provinsi jika tidak diperlukan
+        unset($fields['billing']['billing_postcode']); // Hapus field kode pos
+        unset($fields['billing']['billing_country']); // Hapus field negara (jika tetap ingin default)
+        unset($fields['billing']['billing_city']); // Hapus field kota
+
+        return $fields;
+    }
+
+    public function reorder_checkout_fields($fields) {
+        $fields['billing']['billing_first_name']['priority'] = 10;
+        $fields['billing']['billing_last_name']['priority'] = 20;
+        $fields['billing']['billing_email']['priority'] = 30;
+        $fields['billing']['billing_phone']['priority'] = 40;
+        $fields['billing']['billing_address_1']['priority'] = 50;
+
+        return $fields;
+    }
+
 
     /**
      * Render custom billing form using Bootstrap.
