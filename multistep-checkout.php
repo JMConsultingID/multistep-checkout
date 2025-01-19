@@ -48,6 +48,9 @@ class Multistep_Checkout {
      * @return array
      */
     public function customize_checkout_fields($fields) {
+        // Remove shipping fields
+        unset($fields['shipping']);
+        
         // Unset all billing fields
         unset($fields['billing']);
 
