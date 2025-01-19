@@ -13,7 +13,7 @@
             countryField.val(savedCountry).change();
         }
 
-        function updateStateField() {
+        function updateStateField(clearState = true) {
             const selectedCountry = countryField.val();
 
             // Clear previous state field content
@@ -35,8 +35,8 @@
                 $.each(states[selectedCountry], function (code, name) {
                     const option = $('<option>', { value: code, text: name });
 
-                    // Restore selected state if it matches saved value
-                    if (savedState && savedState === code) {
+                    // Restore selected state if it matches saved value and clearState is false
+                    if (!clearState && savedState && savedState === code) {
                         option.prop('selected', true);
                     }
 
@@ -53,16 +53,24 @@
                     class: 'input-text',
                     required: true,
                     placeholder: 'Enter State/Region',
-                    value: savedState || '',
                 });
 
+                if (!clearState && savedState) {
+                    stateInput.val(savedState); // Restore saved value if clearState is false
+                }
+
                 stateFieldContainer.append(stateInput);
+            }
+
+            // Clear state saved in local storage if clearState is true
+            if (clearState) {
+                localStorage.removeItem('billing_state');
             }
         }
 
         // Handle country change event
         countryField.on('change', function () {
-            updateStateField();
+            updateStateField(true);
 
             // Save selected country to local storage
             localStorage.setItem('billing_country', countryField.val());
@@ -74,6 +82,6 @@
         });
 
         // Initialize the state field
-        updateStateField();
+        updateStateField(false);
     });
 })(jQuery);
