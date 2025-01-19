@@ -180,7 +180,7 @@ class Multistep_Checkout {
         if ($order->get_status() === 'pending') {
             // Redirect unpaid orders to order-pay page
             $redirect_url = $order->get_checkout_payment_url();
-            $order->add_order_note(__('Redirecting to order-pay page', 'multistep-checkout'));
+            $order->add_order_note(__('Redirecting to Order-Pay Page', 'multistep-checkout'));
             wp_safe_redirect($redirect_url);
             exit;
         }
