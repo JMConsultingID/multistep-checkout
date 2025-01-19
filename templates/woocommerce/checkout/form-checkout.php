@@ -40,7 +40,7 @@ if ( ! $checkout->is_registration_enabled() && $checkout->is_registration_requir
 				<?php do_action( 'woocommerce_checkout_billing' ); ?>
 			</div>
 
-			<div class="">
+			<div class="d-flex justify-content-center my-4">
 				<?php do_action( 'woocommerce_checkout_shipping' ); ?>
 				
 				<?php do_action( 'woocommerce_checkout_after_order_review' ); ?>
