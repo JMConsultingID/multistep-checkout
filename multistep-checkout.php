@@ -48,12 +48,76 @@ class Multistep_Checkout {
      * @return array
      */
     public function customize_checkout_fields($fields) {
-        // Remove shipping fields
-        unset($fields['shipping']);
+        // Unset all billing fields
+        unset($fields['billing']);
 
-        // Optionally remove some billing fields
-        unset($fields['billing']['billing_company']);
-        unset($fields['billing']['billing_address_2']);
+        // Add customized billing fields with Bootstrap classes
+        $fields['billing'] = [
+            'billing_first_name' => [
+                'label' => __('First Name', 'multistep-checkout'),
+                'required' => true,
+                'class' => ['form-group col-md-6'],
+                'input_class' => ['form-control'],
+                'placeholder' => __('First Name', 'multistep-checkout'),
+            ],
+            'billing_last_name' => [
+                'label' => __('Last Name', 'multistep-checkout'),
+                'required' => true,
+                'class' => ['form-group col-md-6'],
+                'input_class' => ['form-control'],
+                'placeholder' => __('Last Name', 'multistep-checkout'),
+            ],
+            'billing_email' => [
+                'label' => __('Email', 'multistep-checkout'),
+                'required' => true,
+                'class' => ['form-group col-md-6'],
+                'input_class' => ['form-control'],
+                'placeholder' => __('Email', 'multistep-checkout'),
+            ],
+            'billing_phone' => [
+                'label' => __('Phone Number', 'multistep-checkout'),
+                'required' => true,
+                'class' => ['form-group col-md-6'],
+                'input_class' => ['form-control'],
+                'placeholder' => __('Phone Number', 'multistep-checkout'),
+            ],
+            'billing_address_1' => [
+                'label' => __('Address', 'multistep-checkout'),
+                'required' => true,
+                'class' => ['form-group col-12'],
+                'input_class' => ['form-control'],
+                'placeholder' => __('Address', 'multistep-checkout'),
+            ],
+            'billing_country' => [
+                'label' => __('Country', 'multistep-checkout'),
+                'required' => true,
+                'type' => 'select',
+                'class' => ['form-group col-md-6'],
+                'input_class' => ['form-control'],
+                'options' => WC()->countries->get_countries(),
+            ],
+            'billing_state' => [
+                'label' => __('State/Region', 'multistep-checkout'),
+                'required' => true,
+                'class' => ['form-group col-md-6'],
+                'input_class' => ['form-control'],
+                'placeholder' => __('State/Region', 'multistep-checkout'),
+            ],
+            'billing_city' => [
+                'label' => __('City', 'multistep-checkout'),
+                'required' => true,
+                'class' => ['form-group col-md-6'],
+                'input_class' => ['form-control'],
+                'placeholder' => __('City', 'multistep-checkout'),
+            ],
+            'billing_postcode' => [
+                'label' => __('Postal Code', 'multistep-checkout'),
+                'required' => true,
+                'class' => ['form-group col-md-6'],
+                'input_class' => ['form-control'],
+                'placeholder' => __('Postal Code', 'multistep-checkout'),
+            ],
+        ];
 
         return $fields;
     }
