@@ -17,6 +17,9 @@ class Multistep_Checkout {
         // Disable payment options on checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
+        // Modify checkout fields
+        add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
+
         // Set order status based on total at checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_order_status_based_on_total'], 10, 3);
 
@@ -28,12 +31,6 @@ class Multistep_Checkout {
 
         // Enqueue Bootstrap CSS and JS
         add_action('wp_enqueue_scripts', [$this, 'enqueue_bootstrap']);
-
-        // Customize checkout fields with Bootstrap classes
-        add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
-
-        // Customize layout with Bootstrap grid
-        add_filter('woocommerce_form_field', [$this, 'customize_checkout_fields_layout'], 10, 4);
     }
 
     /**
@@ -45,64 +42,20 @@ class Multistep_Checkout {
     }
 
     /**
-     * Customize WooCommerce checkout fields with Bootstrap classes
+     * Customize WooCommerce checkout fields
      *
      * @param array $fields
      * @return array
      */
     public function customize_checkout_fields($fields) {
-        foreach ($fields as $fieldset_key => $fieldset) {
-            foreach ($fieldset as $field_key => $field) {
-                // Add Bootstrap classes
-                $fields[$fieldset_key][$field_key]['class'][] = 'form-group';
-                $fields[$fieldset_key][$field_key]['input_class'][] = 'form-control';
-                $fields[$fieldset_key][$field_key]['label_class'][] = 'form-label';
-            }
-        }
+        // Remove shipping fields
+        unset($fields['shipping']);
+
+        // Optionally remove some billing fields
+        unset($fields['billing']['billing_company']);
+        unset($fields['billing']['billing_address_2']);
+
         return $fields;
-    }
-
-    /**
-     * Customize WooCommerce checkout fields layout with Bootstrap grid
-     *
-     * @param string $field HTML field markup
-     * @param string $key Field key
-     * @param array $args Field arguments
-     * @param string $value Field value
-     * @return string
-     */
-    public function customize_checkout_fields_layout($field, $key, $args, $value) {
-        $field_start = '';
-        $field_end = '';
-
-        // Fields grouped in pairs
-        $left_columns = [
-            'billing_first_name',
-            'billing_email',
-            'billing_country',
-            'billing_city'
-        ];
-        $right_columns = [
-            'billing_last_name',
-            'billing_phone',
-            'billing_state',
-            'billing_postcode'
-        ];
-
-        // Add opening row div
-        if (in_array($key, $left_columns)) {
-            $field_start = '<div class="row"><div class="col-md-6">';
-            $field_end = '</div>';
-        }
-
-        // Add closing row div
-        if (in_array($key, $right_columns)) {
-            $field_start = '<div class="col-md-6">';
-            $field_end = '</div></div>';
-        }
-
-        // Return the modified field
-        return $field_start . $field . $field_end;
     }
 
     /**
