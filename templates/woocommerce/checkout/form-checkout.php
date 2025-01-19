@@ -33,8 +33,6 @@ if ( ! $checkout->is_registration_enabled() && $checkout->is_registration_requir
 
 	<?php if ( $checkout->get_checkout_fields() ) : ?>
 
-		<?php do_action( 'woocommerce_checkout_before_customer_details' ); ?>
-
 		<div class="yourpropfirm-checkout-step mt-4">
 		    <div class="ypf-steps mb-4">
 			    <div class="step-card">
@@ -56,6 +54,10 @@ if ( ! $checkout->is_registration_enabled() && $checkout->is_registration_requir
 			    </div>
 			</div>
 		</div>
+
+		<?php do_action( 'woocommerce_checkout_before_customer_details' ); ?>
+
+
 
 		<div class="" id="customer_details">
 			<div class="container">
