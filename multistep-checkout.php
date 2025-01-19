@@ -174,10 +174,13 @@ class Multistep_Checkout {
         }
 
         if ($order->get_status() === 'pending') {
-            // Redirect unpaid orders to order-pay page
+            // Open order-pay page in a new tab using JavaScript and redirect checkout to home
             $redirect_url = $order->get_checkout_payment_url();
             $order->add_order_note(__('Redirecting to order-pay page', 'multistep-checkout'));
-            wp_safe_redirect($redirect_url);
+            echo '<script>
+                window.open("' . esc_url($redirect_url) . '", "_blank");
+                window.location.href = "' . esc_url(home_url()) . '";
+            </script>';
             exit;
         }
     }
