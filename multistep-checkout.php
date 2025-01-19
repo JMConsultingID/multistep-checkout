@@ -29,16 +29,24 @@ class Multistep_Checkout {
         // Ensure completed orders remain completed
         add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
 
-        // Enqueue Bootstrap CSS and JS
-        add_action('wp_enqueue_scripts', [$this, 'enqueue_bootstrap']);
+        // Enqueue scripts and styles
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
     }
 
     /**
-     * Enqueue Bootstrap CSS and JS
+     * Enqueue scripts and styles
      */
-    public function enqueue_bootstrap() {
+    public function enqueue_scripts() {
         wp_enqueue_style('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css', [], '5.3.0-alpha3');
         wp_enqueue_script('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js', ['jquery'], '5.3.0-alpha3', true);
+
+        wp_enqueue_script('multistep-checkout-js', plugin_dir_url(__FILE__) . 'assets/js/multistep-checkout.js', ['jquery'], '1.0', true);
+
+        // Localize script for WooCommerce country and state data
+        wp_localize_script('custom-checkout-js', 'wc_country_states', [
+            'countries' => WC()->countries->get_allowed_countries(),
+            'states' => WC()->countries->get_states(),
+        ]);
     }
 
     /**
