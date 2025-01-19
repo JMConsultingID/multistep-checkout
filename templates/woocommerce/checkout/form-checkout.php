@@ -19,6 +19,30 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+?>
+<div class="yourpropfirm-checkout-step mt-4">
+    <div class="ypf-steps mb-4">
+	    <div class="step-card">
+	        <!-- Current Step -->
+	        <div class="current-step-container">
+	            <div class="step-label">You Are Here</div>
+	            <div class="step-text">
+	                <span>1.</span>Billing Information
+	            </div>
+	        </div>
+
+	        <!-- Next Step -->
+	        <div class="next-step-container">
+	            <div class="step-label">Next Step</div>
+	            <div class="step-text">
+	                <span>2.</span>Review Order & Payment
+	            </div>
+	        </div>
+	    </div>
+	</div>
+</div>
+<?php
+
 do_action( 'woocommerce_before_checkout_form', $checkout );
 
 // If checkout registration is disabled and not logged in, the user cannot checkout.
@@ -33,27 +57,7 @@ if ( ! $checkout->is_registration_enabled() && $checkout->is_registration_requir
 
 	<?php if ( $checkout->get_checkout_fields() ) : ?>
 
-		<div class="yourpropfirm-checkout-step mt-4">
-		    <div class="ypf-steps mb-4">
-			    <div class="step-card">
-			        <!-- Current Step -->
-			        <div class="current-step-container">
-			            <div class="step-label">You Are Here</div>
-			            <div class="step-text">
-			                <span>1.</span>Billing Information
-			            </div>
-			        </div>
 
-			        <!-- Next Step -->
-			        <div class="next-step-container">
-			            <div class="step-label">Next Step</div>
-			            <div class="step-text">
-			                <span>2.</span>Review Order & Payment
-			            </div>
-			        </div>
-			    </div>
-			</div>
-		</div>
 
 		<?php do_action( 'woocommerce_checkout_before_customer_details' ); ?>
 
