@@ -25,6 +25,38 @@ class Multistep_Checkout {
 
         // Ensure completed orders remain completed
         add_filter('woocommerce_payment_complete_order_status', [$this, 'ensure_completed_orders_remain_completed'], 10, 3);
+
+        // Enqueue Bootstrap CSS and JS
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_bootstrap']);
+
+        // Customize checkout fields with Bootstrap classes
+        add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
+    }
+
+    /**
+     * Enqueue Bootstrap CSS and JS
+     */
+    public function enqueue_bootstrap() {
+        wp_enqueue_style('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css', [], '5.3.0-alpha3');
+        wp_enqueue_script('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js', ['jquery'], '5.3.0-alpha3', true);
+    }
+
+    /**
+     * Customize WooCommerce checkout fields with Bootstrap classes
+     *
+     * @param array $fields
+     * @return array
+     */
+    public function customize_checkout_fields($fields) {
+        foreach ($fields as $fieldset_key => $fieldset) {
+            foreach ($fieldset as $field_key => $field) {
+                // Add Bootstrap classes
+                $fields[$fieldset_key][$field_key]['class'][] = 'form-group';
+                $fields[$fieldset_key][$field_key]['input_class'][] = 'form-control';
+                $fields[$fieldset_key][$field_key]['label_class'][] = 'form-label';
+            }
+        }
+        return $fields;
     }
 
     /**
