@@ -17,6 +17,9 @@ class Multistep_Checkout {
         // Disable payment options on checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
+        // Modify checkout fields
+        add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
+
         // Set order status based on total at checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_order_status_based_on_total'], 10, 3);
 
@@ -28,16 +31,6 @@ class Multistep_Checkout {
 
         // Enqueue Bootstrap CSS and JS
         add_action('wp_enqueue_scripts', [$this, 'enqueue_bootstrap']);
-
-        // Replace default WooCommerce checkout fields
-        add_filter('woocommerce_checkout_fields', [$this, 'unset_default_checkout_fields']);
-
-        // Render custom checkout form
-        add_action('woocommerce_checkout_billing', [$this, 'render_custom_billing_form']);
-
-        // Process custom billing form data
-        add_action('woocommerce_checkout_process', [$this, 'validate_custom_billing_form']);
-        add_action('woocommerce_checkout_update_order_meta', [$this, 'save_custom_billing_data']);
     }
 
     /**
@@ -49,71 +42,20 @@ class Multistep_Checkout {
     }
 
     /**
-     * Unset default WooCommerce checkout fields
+     * Customize WooCommerce checkout fields
      *
      * @param array $fields
      * @return array
      */
-    public function unset_default_checkout_fields($fields) {
-        unset($fields['billing']);
+    public function customize_checkout_fields($fields) {
+        // Remove shipping fields
+        unset($fields['shipping']);
+
+        // Optionally remove some billing fields
+        unset($fields['billing']['billing_company']);
+        unset($fields['billing']['billing_address_2']);
+
         return $fields;
-    }
-
-    /**
-     * Render custom billing form
-     */
-    public function render_custom_billing_form() {
-        include plugin_dir_path(__FILE__) . 'templates/custom-billing-form.php';
-    }
-
-    /**
-     * Validate custom billing form data
-     */
-    public function validate_custom_billing_form() {
-        if (empty($_POST['first_name'])) {
-            wc_add_notice(__('Please enter your first name.', 'multistep-checkout'), 'error');
-        }
-        if (empty($_POST['last_name'])) {
-            wc_add_notice(__('Please enter your last name.', 'multistep-checkout'), 'error');
-        }
-        if (empty($_POST['email']) || !is_email($_POST['email'])) {
-            wc_add_notice(__('Please enter a valid email address.', 'multistep-checkout'), 'error');
-        }
-        if (empty($_POST['phone'])) {
-            wc_add_notice(__('Please enter your phone number.', 'multistep-checkout'), 'error');
-        }
-    }
-
-    /**
-     * Save custom billing form data to order meta
-     *
-     * @param int $order_id
-     */
-    public function save_custom_billing_data($order_id) {
-        if (!empty($_POST['first_name'])) {
-            update_post_meta($order_id, '_billing_first_name', sanitize_text_field($_POST['first_name']));
-        }
-        if (!empty($_POST['last_name'])) {
-            update_post_meta($order_id, '_billing_last_name', sanitize_text_field($_POST['last_name']));
-        }
-        if (!empty($_POST['email'])) {
-            update_post_meta($order_id, '_billing_email', sanitize_email($_POST['email']));
-        }
-        if (!empty($_POST['phone'])) {
-            update_post_meta($order_id, '_billing_phone', sanitize_text_field($_POST['phone']));
-        }
-        if (!empty($_POST['address'])) {
-            update_post_meta($order_id, '_billing_address_1', sanitize_text_field($_POST['address']));
-        }
-        if (!empty($_POST['country'])) {
-            update_post_meta($order_id, '_billing_country', sanitize_text_field($_POST['country']));
-        }
-        if (!empty($_POST['city'])) {
-            update_post_meta($order_id, '_billing_city', sanitize_text_field($_POST['city']));
-        }
-        if (!empty($_POST['postal_code'])) {
-            update_post_meta($order_id, '_billing_postcode', sanitize_text_field($_POST['postal_code']));
-        }
     }
 
     /**
