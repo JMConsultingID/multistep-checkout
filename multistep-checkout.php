@@ -31,6 +31,9 @@ class Multistep_Checkout {
 
         // Customize checkout fields with Bootstrap classes
         add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
+
+        // Customize layout with Bootstrap grid
+        add_filter('woocommerce_form_field', [$this, 'customize_checkout_fields_layout'], 10, 4);
     }
 
     /**
@@ -57,6 +60,49 @@ class Multistep_Checkout {
             }
         }
         return $fields;
+    }
+
+    /**
+     * Customize WooCommerce checkout fields layout with Bootstrap grid
+     *
+     * @param string $field HTML field markup
+     * @param string $key Field key
+     * @param array $args Field arguments
+     * @param string $value Field value
+     * @return string
+     */
+    public function customize_checkout_fields_layout($field, $key, $args, $value) {
+        $field_start = '';
+        $field_end = '';
+
+        // Fields grouped in pairs
+        $left_columns = [
+            'billing_first_name',
+            'billing_email',
+            'billing_country',
+            'billing_city'
+        ];
+        $right_columns = [
+            'billing_last_name',
+            'billing_phone',
+            'billing_state',
+            'billing_postcode'
+        ];
+
+        // Add opening row div
+        if (in_array($key, $left_columns)) {
+            $field_start = '<div class="row"><div class="col-md-6">';
+            $field_end = '</div>';
+        }
+
+        // Add closing row div
+        if (in_array($key, $right_columns)) {
+            $field_start = '<div class="col-md-6">';
+            $field_end = '</div></div>';
+        }
+
+        // Return the modified field
+        return $field_start . $field . $field_end;
     }
 
     /**
