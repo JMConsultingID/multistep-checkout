@@ -1,0 +1,100 @@
+/* Placeholder for CSS file */
+.yourpropfirm-checkout-container .form-check {
+    position: relative;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.yourpropfirm-checkout-container .form-check .invalid-feedback {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    left: 0;
+    bottom: -20px;
+}
+
+.yourpropfirm-checkout-container .form-check-input.is-invalid ~ .invalid-feedback {
+    display: block;
+}
+
+.ypf-steps {
+    margin: 20px 0;
+}
+
+.ypf-steps .step-card {
+    display: flex;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #1e1f2d;
+    border: 1px solid rgba(88, 88, 115, 0.3);
+    box-shadow: 0 0 0 1px rgba(88, 88, 115, 0.1);
+}
+
+.ypf-steps .current-step-container {
+    flex: 1;
+    padding: 16px 24px;
+    background: linear-gradient(90deg, 
+        rgba(79, 107, 182, 0.2) 0%,
+        rgba(79, 107, 182, 0.1) 100%
+    );
+    position: relative;
+}
+
+.ypf-steps .current-step-container::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        rgba(123, 97, 255, 0.5) 0%, 
+        rgba(123, 97, 255, 0) 100%
+    );
+}
+
+.ypf-steps .next-step-container {
+    flex: 1;
+    padding: 16px 24px;
+    background: linear-gradient(90deg, 
+        rgba(47, 46, 65, 0.3) 0%, 
+        rgba(47, 46, 65, 0.1) 100%
+    );
+}
+
+.ypf-steps .step-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ypf-steps .step-text {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.ypf-steps .next-step-container .step-text {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.ypf-steps .step-text span {
+    margin-right: 4px;
+}
+
+@media (max-width: 576px) {
+    .ypf-steps .step-card {
+        flex-direction: column;
+    }
+    
+    .ypf-steps .current-step-container,
+    .ypf-steps .next-step-container {
+        padding: 12px 16px;
+    }
+
+    .ypf-steps .current-step-container::after {
+        display: none;
+    }
+}
