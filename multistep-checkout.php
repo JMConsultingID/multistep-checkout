@@ -17,9 +17,6 @@ class Multistep_Checkout {
         // Disable payment options on checkout page
         add_filter('woocommerce_cart_needs_payment', '__return_false');
 
-        // Modify checkout fields
-        add_filter('woocommerce_checkout_fields', [$this, 'customize_checkout_fields']);
-
         // Set order status based on total at checkout
         add_action('woocommerce_checkout_order_processed', [$this, 'set_order_status_based_on_total'], 10, 3);
 
@@ -31,6 +28,9 @@ class Multistep_Checkout {
 
         // Enqueue Bootstrap CSS and JS
         add_action('wp_enqueue_scripts', [$this, 'enqueue_bootstrap']);
+
+        // Render custom billing form
+        add_action('woocommerce_before_checkout_billing_form', [$this, 'render_custom_billing_form']);
     }
 
     /**
@@ -42,20 +42,61 @@ class Multistep_Checkout {
     }
 
     /**
-     * Customize WooCommerce checkout fields
-     *
-     * @param array $fields
-     * @return array
+     * Render custom billing form using Bootstrap.
      */
-    public function customize_checkout_fields($fields) {
-        // Remove shipping fields
-        unset($fields['shipping']);
-
-        // Optionally remove some billing fields
-        unset($fields['billing']['billing_company']);
-        unset($fields['billing']['billing_address_2']);
-
-        return $fields;
+    public function render_custom_billing_form() {
+        // Contoh data (seharusnya berasal dari WooCommerce atau custom logic)
+        $countries = WC()->countries->get_countries();
+        $form_data = [
+            'first_name'  => '',
+            'last_name'   => '',
+            'email'       => '',
+            'phone'       => '',
+            'address'     => '',
+            'country'     => '',
+            'city'        => '',
+            'postal_code' => '',
+        ];
+        ?>
+        <h3 class="mb-3"><?php esc_html_e('Billing Information', 'multistep-checkout'); ?></h3>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label for="billing_first_name" class="form-label"><?php esc_html_e('First Name', 'multistep-checkout'); ?></label>
+                <input type="text" name="billing_first_name" id="billing_first_name" class="form-control" value="<?php echo esc_attr($form_data['first_name']); ?>" required>
+            </div>
+            <div class="col-md-6">
+                <label for="billing_last_name" class="form-label"><?php esc_html_e('Last Name', 'multistep-checkout'); ?></label>
+                <input type="text" name="billing_last_name" id="billing_last_name" class="form-control" value="<?php echo esc_attr($form_data['last_name']); ?>" required>
+            </div>
+            <div class="col-md-6">
+                <label for="billing_email" class="form-label"><?php esc_html_e('Email', 'multistep-checkout'); ?></label>
+                <input type="email" name="billing_email" id="billing_email" class="form-control" value="<?php echo esc_attr($form_data['email']); ?>" required>
+            </div>
+            <div class="col-md-6">
+                <label for="billing_phone" class="form-label"><?php esc_html_e('Phone Number', 'multistep-checkout'); ?></label>
+                <input type="text" name="billing_phone" id="billing_phone" class="form-control" value="<?php echo esc_attr($form_data['phone']); ?>" required>
+            </div>
+            <div class="col-md-12">
+                <label for="billing_address_1" class="form-label"><?php esc_html_e('Address', 'multistep-checkout'); ?></label>
+                <input type="text" name="billing_address_1" id="billing_address_1" class="form-control" value="<?php echo esc_attr($form_data['address']); ?>" required>
+            </div>
+            <div class="col-md-6">
+                <label for="billing_country" class="form-label"><?php esc_html_e('Country', 'multistep-checkout'); ?></label>
+                <select name="billing_country" id="billing_country" class="form-select" required>
+                    <option value=""><?php esc_html_e('Select Country', 'multistep-checkout'); ?></option>
+                    <?php foreach ($countries as $code => $name) : ?>
+                        <option value="<?php echo esc_attr($code); ?>">
+                            <?php echo esc_html($name); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label for="billing_city" class="form-label"><?php esc_html_e('City', 'multistep-checkout'); ?></label>
+                <input type="text" name="billing_city" id="billing_city" class="form-control" value="<?php echo esc_attr($form_data['city']); ?>" required>
+            </div>
+        </div>
+        <?php
     }
 
     /**
@@ -67,14 +108,11 @@ class Multistep_Checkout {
      */
     public function set_order_status_based_on_total($order_id, $posted_data, $order) {
         if ($order->get_total() == 0) {
-            // If order total is 0, set status to completed
             $order->update_status('completed');
         } else {
-            // If order total > 0, set status to pending
             $order->add_order_note( sprintf( __( 'Order Created. Order ID: #%d', 'multistep-checkout' ), $order->get_id() ) );
             $order->update_status('pending');
         }
-        error_log('Order ID ' . $order_id . ' status updated based on total: ' . $order->get_total());
     }
 
     /**
@@ -83,22 +121,12 @@ class Multistep_Checkout {
      * @param int $order_id
      */
     public function redirect_after_checkout($order_id) {
-        if (!$order_id) {
-            return;
-        }
-
         $order = wc_get_order($order_id);
-
         if ($order->get_total() == 0) {
-            // If order total is 0, let WooCommerce handle the flow to Thank You page
             return;
         }
-
         if ($order->get_status() === 'pending') {
-            // Redirect unpaid orders to order-pay page
-            $redirect_url = $order->get_checkout_payment_url();
-            $order->add_order_note(__('Redirecting to order-pay page', 'multistep-checkout'));
-            wp_safe_redirect($redirect_url);
+            wp_safe_redirect($order->get_checkout_payment_url());
             exit;
         }
     }
@@ -112,11 +140,10 @@ class Multistep_Checkout {
      * @return string
      */
     public function ensure_completed_orders_remain_completed($status, $order_id, $order) {
-        // Only adjust orders that are not already completed
         if ($order->get_status() === 'pending') {
-            return 'pending'; // Keep pending for unpaid orders
+            return 'pending';
         }
-        return $status; // Return default status for other cases
+        return $status;
     }
 }
 
