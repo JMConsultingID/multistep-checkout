@@ -40,16 +40,18 @@ class Multistep_Checkout {
      * Enqueue scripts and styles
      */
     public function enqueue_scripts() {
-        wp_enqueue_style('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css', [], '5.3.0-alpha3');
-        wp_enqueue_script('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js', ['jquery'], '5.3.0-alpha3', true);
-        wp_enqueue_style('multistep-checkout-css', plugin_dir_url(__FILE__) . 'assets/css/multistep-checkout.css', [], '1.0');
-        wp_enqueue_script('multistep-checkout-js', plugin_dir_url(__FILE__) . 'assets/js/multistep-checkout.js', ['jquery'], '1.0', true);
+        if (is_checkout()) {
+            wp_enqueue_style('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css', [], '5.3.0-alpha3');
+            wp_enqueue_script('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js', ['jquery'], '5.3.0-alpha3', true);
+            wp_enqueue_style('multistep-checkout-css', plugin_dir_url(__FILE__) . 'assets/css/multistep-checkout.css', [], '1.0');
+            wp_enqueue_script('multistep-checkout-js', plugin_dir_url(__FILE__) . 'assets/js/multistep-checkout.js', ['jquery'], '1.0', true);
 
-        // Localize script for WooCommerce country and state data
-        wp_localize_script('multistep-checkout-js', 'wc_country_states', [
-            'countries' => WC()->countries->get_allowed_countries(),
-            'states' => WC()->countries->get_states(),
-        ]);
+            // Localize script for WooCommerce country and state data
+            wp_localize_script('multistep-checkout-js', 'wc_country_states', [
+                'countries' => WC()->countries->get_allowed_countries(),
+                'states' => WC()->countries->get_states(),
+            ]);
+        }
     }
 
     /**
