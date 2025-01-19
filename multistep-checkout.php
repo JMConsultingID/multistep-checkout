@@ -158,7 +158,6 @@ class Multistep_Checkout {
             $order->add_order_note( sprintf( __( 'Order Created. Order ID: #%d', 'multistep-checkout' ), $order->get_id() ) );
             $order->update_status('pending');
         }
-        error_log('Order ID ' . $order_id . ' status updated based on total: ' . $order->get_total());
     }
 
     /**
