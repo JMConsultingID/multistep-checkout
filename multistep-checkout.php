@@ -43,7 +43,7 @@ class Multistep_Checkout {
         wp_enqueue_script('multistep-checkout-js', plugin_dir_url(__FILE__) . 'assets/js/multistep-checkout.js', ['jquery'], '1.0', true);
 
         // Localize script for WooCommerce country and state data
-        wp_localize_script('custom-checkout-js', 'wc_country_states', [
+        wp_localize_script('multistep-checkout-js', 'wc_country_states', [
             'countries' => WC()->countries->get_allowed_countries(),
             'states' => WC()->countries->get_states(),
         ]);
