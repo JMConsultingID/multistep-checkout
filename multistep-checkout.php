@@ -31,6 +31,9 @@ class Multistep_Checkout {
 
         // Enqueue scripts and styles
         add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
+
+        // Override WooCommerce templates
+        add_filter('woocommerce_locate_template', [$this, 'override_templates'], 10, 3);
     }
 
     /**
@@ -196,6 +199,36 @@ class Multistep_Checkout {
             return 'pending'; // Keep pending for unpaid orders
         }
         return $status; // Return default status for other cases
+    }
+
+    /**
+     * Override WooCommerce templates
+     *
+     * @param string $template
+     * @param string $template_name
+     * @param string $template_path
+     * @return string
+     */
+    public function override_templates($template, $template_name, $template_path) {
+        // Array of templates to override
+        $override_templates = [
+            'checkout/form-pay.php',
+            'checkout/form-checkout.php'
+        ];
+
+        // Check if the requested template is in our override list
+        if (in_array($template_name, $override_templates)) {
+            // Define the path to the plugin's custom template
+            $plugin_template = plugin_dir_path(__FILE__) . 'templates/woocommerce/' . $template_name;
+
+            // Return the plugin template if it exists
+            if (file_exists($plugin_template)) {
+                return $plugin_template;
+            }
+        }
+
+        // Return the original template if no override
+        return $template;
     }
 }
 
